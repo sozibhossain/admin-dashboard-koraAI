@@ -74,7 +74,7 @@ export default function AdminDashboardPage() {
         title="Dashboard"
         subtitle="Live admin overview using backend dashboard metrics, partner records, and activity."
       />
-      <div className="p-6 space-y-6">
+      <div className="space-y-6 p-3 sm:p-4 lg:p-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {isLoading
             ? Array.from({ length: 4 }).map((_, index) => (

@@ -1,286 +1,574 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supportApi } from "@/lib/api";
 import { Header } from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getInitials, formatDate, timeAgo } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  Search, Plus, Send, ChevronLeft, ChevronRight,
-  HeadphonesIcon, CheckCircle, Clock, XCircle, AlertCircle, Download
+  AlertCircle,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Search,
+  Send,
+  XCircle,
 } from "lucide-react";
 
-const mockTickets = [
-  { _id: "1", subject: "Michael Brown", category: "Account", priority: "High", status: "open", entity: "Alma Cuts", requestedBy: { name: "Michael Brown", role: "Customer - Alma Cuts" }, createdAt: new Date(Date.now() - 180000), lastMessage: "Unable to access my account. Although my credentials..." },
-  { _id: "2", subject: "Sarah Mitchell", category: "Billing", priority: "Medium", status: "in_progress", entity: "Sarah Mitchell", requestedBy: { name: "Sarah Mitchell", role: "Partner" }, createdAt: new Date(Date.now() - 7200000), lastMessage: "Professional appearance issue" },
-  { _id: "3", subject: "Urban Cuts", category: "Technical", priority: "High", status: "open", entity: "Urban Cuts", requestedBy: { name: "Urban Cuts", role: "Partner" }, createdAt: new Date(Date.now() - 10800000), lastMessage: "Unable to add new team member" },
-  { _id: "4", subject: "David Wilson", category: "Billing", priority: "Low", status: "pending_approval", entity: "David Wilson", requestedBy: { name: "David Wilson", role: "Customer" }, createdAt: new Date(Date.now() - 86400000), lastMessage: "Refund/revert payment request" },
-  { _id: "5", subject: "Ellis Barbers", category: "Technical", priority: "High", status: "in_progress", entity: "Ellis Barbers", requestedBy: { name: "Ellis Barbers", role: "Partner" }, createdAt: new Date(Date.now() - 172800000), lastMessage: "Issue not showing in dashboard" },
+const STATUS_TABS = [
+  { value: "all", label: "All" },
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "pending_approval", label: "Pending Approval" },
+  { value: "resolved", label: "Resolved" },
+  { value: "closed", label: "Closed" },
 ];
 
-const mockMessages = [
-  { id: "1", sender: "customer", name: "Michael Brown", content: "Unable to access my account. Although trying multiple times with the correct credentials and password, I run into the same issue.", time: "10:15 AM" },
-  { id: "2", sender: "kora", name: "Kora AI Assistant", content: "I can help you with that. Let me check your account status.", time: "10:15 AM" },
-  { id: "3", sender: "admin", name: "Admin User", content: "I've checked your account and blocked it due to suspicious login attempts. I can unblock it for you.", time: "10:17 AM" },
-  { id: "4", sender: "customer", name: "Michael Brown", content: "Thank you! That would be great!", time: "10:18 AM" },
-];
+const STATUS_LABELS: Record<string, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  pending_approval: "Pending Approval",
+  resolved: "Resolved",
+  closed: "Closed",
+};
 
-const priorityColors: Record<string, string> = { High: "destructive", Medium: "warning", Low: "secondary", Critical: "destructive" };
-const statusColors: Record<string, string> = { open: "default", in_progress: "warning", pending_approval: "purple", resolved: "success", closed: "secondary" };
-const statusLabels: Record<string, string> = { open: "Open", in_progress: "In Progress", pending_approval: "Pending Approval", resolved: "Resolved", closed: "Closed" };
+const STATUS_BADGE: Record<string, any> = {
+  open: "default",
+  in_progress: "warning",
+  pending_approval: "secondary",
+  resolved: "success",
+  closed: "secondary",
+};
+
+const PRIORITY_BADGE: Record<string, any> = {
+  low: "secondary",
+  medium: "warning",
+  high: "destructive",
+  urgent: "destructive",
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  technical_issue: "Technical Issue",
+  account_access: "Account Access",
+  billing: "Billing",
+  data_reports: "Data / Reports",
+  integration: "Integration",
+  other: "Other",
+};
 
 export default function SupportPage() {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<any>(mockTickets[0]);
+  const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("All Requests");
-  const [replyText, setReplyText] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isInternal, setIsInternal] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "thread">("list");
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const limit = 10;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["support", page, activeTab],
-    queryFn: () => supportApi.getAll({ page, limit: 10, status: activeTab !== "All Requests" ? activeTab.toLowerCase().replace(" ", "_") : undefined }).then(r => r.data),
+  const { data: listResponse, isLoading: listLoading } = useQuery({
+    queryKey: ["support-tickets", page, tab],
+    queryFn: () =>
+      supportApi
+        .getAll({
+          page,
+          limit,
+          status: tab === "all" ? undefined : tab,
+        })
+        .then((response) => response.data),
   });
 
-  const tickets = data?.data?.length ? data.data : mockTickets;
-  const tabs = [
-    { label: "All Requests", count: 91 },
-    { label: "Open", count: 18, color: "text-blue-400" },
-    { label: "In Progress", count: 7, color: "text-amber-400" },
-    { label: "Pending Approval", count: 36, color: "text-purple-400" },
-    { label: "Resolved", count: 104, color: "text-emerald-400" },
-  ];
+  const tickets: any[] = listResponse?.data || [];
+  const meta = listResponse?.meta || { total: 0 };
+  const totalPages = Math.max(1, Math.ceil((meta.total || 0) / limit));
 
-  function handleReply() {
-    if (!replyText.trim()) return;
-    toast.success("Reply sent");
-    setReplyText("");
-  }
+  const filteredTickets = useMemo(() => {
+    if (!search.trim()) return tickets;
+    const term = search.toLowerCase();
+    return tickets.filter((ticket) => {
+      const partnerName = ticket.created_by_partner_id?.name?.toLowerCase() || "";
+      const employeeName = ticket.created_by_employee_id?.name?.toLowerCase() || "";
+      return (
+        ticket.subject?.toLowerCase().includes(term) ||
+        ticket.ticket_id?.toLowerCase().includes(term) ||
+        partnerName.includes(term) ||
+        employeeName.includes(term)
+      );
+    });
+  }, [tickets, search]);
+
+  useEffect(() => {
+    if (!selectedId && tickets.length > 0) {
+      setSelectedId(tickets[0]._id);
+    }
+  }, [selectedId, tickets]);
+
+  const { data: detailResponse, isLoading: detailLoading } = useQuery({
+    queryKey: ["support-ticket", selectedId],
+    queryFn: () =>
+      supportApi.getById(String(selectedId)).then((response) => response.data?.data),
+    enabled: Boolean(selectedId),
+  });
+
+  const selected: any = detailResponse;
+
+  const { data: statsResponse } = useQuery({
+    queryKey: ["support-stats"],
+    queryFn: () => supportApi.getStats().then((response) => response.data?.data),
+  });
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    (statsResponse?.byStatus || []).forEach((entry: any) => {
+      counts[entry._id] = entry.count;
+    });
+    return counts;
+  }, [statsResponse]);
+
+  const totalTickets = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
+
+  const replyMutation = useMutation({
+    mutationFn: () =>
+      supportApi.reply(String(selectedId), { message: replyText, isInternal }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["support-ticket", selectedId] });
+      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+      setReplyText("");
+      toast.success("Reply sent");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Failed to send reply"),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (status: string) =>
+      supportApi.update(String(selectedId), { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["support-ticket", selectedId] });
+      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["support-stats"] });
+      toast.success("Ticket status updated");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Failed to update status"),
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: () => supportApi.close(String(selectedId)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["support-ticket", selectedId] });
+      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["support-stats"] });
+      toast.success("Ticket closed");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Failed to close ticket"),
+  });
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selected?.replies?.length]);
+
+  const handleReply = () => {
+    if (!replyText.trim() || !selectedId) return;
+    replyMutation.mutate();
+  };
+
+  const ticketAuthor = (ticket: any) =>
+    ticket.created_by_partner_id || ticket.created_by_employee_id || {};
+
+  const stats = [
+    {
+      label: "Open Tickets",
+      value: statusCounts.open || 0,
+      icon: AlertCircle,
+      color: "text-blue-400",
+    },
+    {
+      label: "In Progress",
+      value: statusCounts.in_progress || 0,
+      icon: Clock,
+      color: "text-amber-400",
+    },
+    {
+      label: "Pending Approval",
+      value: statusCounts.pending_approval || 0,
+      icon: Clock,
+      color: "text-purple-400",
+    },
+    {
+      label: "Resolved",
+      value: statusCounts.resolved || 0,
+      icon: CheckCircle,
+      color: "text-emerald-400",
+    },
+    {
+      label: "Closed",
+      value: statusCounts.closed || 0,
+      icon: XCircle,
+      color: "text-gray-400",
+    },
+  ];
 
   return (
     <div>
-      <Header title="Support" subtitle="Manage and resolve support requests from partners and customers." />
-      <div className="p-6">
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-1 bg-[#0d1a2d] p-1 rounded-lg w-fit mb-5">
-          {tabs.map((t) => (
-            <button key={t.label} onClick={() => setActiveTab(t.label)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1 transition-colors ${activeTab === t.label ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200"}`}>
-              {t.label}
-              <span className={`text-[10px] ${activeTab === t.label ? "text-white/70" : (t.color || "text-gray-500")}`}>{t.count}</span>
+      <Header
+        title="Support"
+        subtitle="Manage and resolve support requests from partners and customers."
+      />
+      <div className="p-3 sm:p-4 lg:p-6">
+        <div className="mb-5 flex w-fit flex-wrap gap-1 rounded-lg bg-[#0d1a2d] p-1">
+          {STATUS_TABS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                setTab(option.value);
+                setPage(1);
+              }}
+              className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                tab === option.value
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-400 hover:text-gray-200"
+              }`}
+            >
+              {option.label}
+              <span
+                className={`text-[10px] ${
+                  tab === option.value ? "text-white/70" : "text-gray-500"
+                }`}
+              >
+                {option.value === "all" ? totalTickets : statusCounts[option.value] || 0}
+              </span>
             </button>
           ))}
-          <div className="flex gap-2 ml-2">
-            <Button variant="outline" size="sm" className="h-7 text-xs"><Plus className="w-3 h-3" />Create Ticket</Button>
-            <Button variant="outline" size="sm" className="h-7 text-xs"><Download className="w-3 h-3" />Export</Button>
-          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Ticket List */}
-          <Card className="lg:col-span-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <Card className={`${mobileView === "list" ? "flex" : "hidden"} flex-col lg:flex lg:col-span-2`}>
             <CardHeader>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
-                  <Input placeholder="Search requests..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-xs" />
-                </div>
-                <Select><SelectTrigger className="w-28 h-8 text-xs"><SelectValue placeholder="All Partners" /></SelectTrigger>
-                  <SelectContent><SelectItem value="all">All Partners</SelectItem></SelectContent>
-                </Select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+                <Input
+                  placeholder="Search requests..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="h-8 pl-8 text-xs"
+                />
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="text-xs text-gray-500 px-4 py-1 border-b border-[#1e2d40]">
-                Showing {tickets.length} of 91 requests
+              <div className="border-b border-[#1e2d40] px-4 py-1 text-xs text-gray-500">
+                {meta.total > 0
+                  ? `${filteredTickets.length} of ${meta.total} requests`
+                  : "0 requests"}
               </div>
-              {tickets.filter((t: any) => !search || t.subject?.toLowerCase().includes(search.toLowerCase())).map((ticket: any) => (
-                <div key={ticket._id} onClick={() => setSelected(ticket)}
-                  className={`flex items-start gap-3 p-4 border-b border-[#1e2d40] cursor-pointer transition-colors ${selected?._id === ticket._id ? "bg-blue-600/10 border-l-2 border-l-blue-500" : "hover:bg-[#0d1a2d]"}`}>
-                  <Avatar className="w-8 h-8 flex-shrink-0">
-                    <AvatarFallback className="text-xs">{getInitials(ticket.requestedBy?.name || ticket.subject)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <p className="text-xs font-medium text-gray-200 truncate">{ticket.requestedBy?.name || ticket.subject}</p>
-                      <Badge variant={priorityColors[ticket.priority] as any} className="text-[9px] ml-1 flex-shrink-0">↑ {ticket.priority}</Badge>
-                    </div>
-                    <p className="text-[10px] text-gray-500">{ticket.requestedBy?.role}</p>
-                    <p className="text-xs text-gray-400 truncate mt-1">{ticket.lastMessage}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <Badge variant={statusColors[ticket.status] as any} className="text-[9px]">{statusLabels[ticket.status]}</Badge>
-                      <span className="text-[10px] text-gray-500">{timeAgo(ticket.createdAt)}</span>
-                    </div>
-                  </div>
+              {listLoading ? (
+                <div className="space-y-2 p-3">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-16 w-full" />
+                  ))}
                 </div>
-              ))}
-              <div className="flex items-center justify-between px-4 py-2 border-t border-[#1e2d40]">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}><ChevronLeft className="w-4 h-4" /></Button>
-                {[1,2,3].map(p => <button key={p} onClick={() => setPage(p)} className={`w-6 h-6 rounded text-xs ${page === p ? "bg-blue-600 text-white" : "text-gray-400"}`}>{p}</button>)}
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPage(p => p+1)}><ChevronRight className="w-4 h-4" /></Button>
+              ) : filteredTickets.length === 0 ? (
+                <p className="p-6 text-center text-xs text-gray-500">
+                  No support tickets yet.
+                </p>
+              ) : (
+                filteredTickets.map((ticket) => {
+                  const author = ticketAuthor(ticket);
+                  const lastReply = ticket.replies?.[ticket.replies.length - 1];
+                  return (
+                    <div
+                      key={ticket._id}
+                      onClick={() => {
+                        setSelectedId(ticket._id);
+                        setMobileView("thread");
+                      }}
+                      className={`flex cursor-pointer items-start gap-3 border-b border-[#1e2d40] p-4 transition-colors ${
+                        selected?._id === ticket._id
+                          ? "border-l-2 border-l-blue-500 bg-blue-600/10"
+                          : "hover:bg-[#0d1a2d]"
+                      }`}
+                    >
+                      <Avatar className="h-8 w-8 shrink-0">
+                        {author.profileImage?.url ? (
+                          <AvatarImage src={author.profileImage.url} alt={author.name} />
+                        ) : (
+                          <AvatarFallback className="text-xs">
+                            {getInitials(author.name || ticket.subject || "T")}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between">
+                          <p className="truncate text-xs font-medium text-gray-200">
+                            {author.name || "Unknown"}
+                          </p>
+                          <Badge
+                            variant={PRIORITY_BADGE[ticket.priority] || "secondary"}
+                            className="ml-1 shrink-0 text-[9px]"
+                          >
+                            {ticket.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-gray-500">
+                          {ticket.ticket_id} · {TYPE_LABELS[ticket.type] || ticket.type}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-gray-400">
+                          {ticket.subject}
+                        </p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <Badge
+                            variant={STATUS_BADGE[ticket.status] || "default"}
+                            className="text-[9px]"
+                          >
+                            {STATUS_LABELS[ticket.status] || ticket.status}
+                          </Badge>
+                          <span className="text-[10px] text-gray-500">
+                            {timeAgo(lastReply?.createdAt || ticket.updatedAt || ticket.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div className="flex items-center justify-between border-t border-[#1e2d40] px-4 py-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-gray-500">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPage((current) => current + 1)}
+                  disabled={page >= totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Chat Panel */}
-          <Card className="lg:col-span-2">
-            {selected ? (
-              <CardContent className="p-0 flex flex-col h-[calc(100vh-260px)]">
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d40]">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-8 h-8"><AvatarFallback className="text-xs">{getInitials(selected.requestedBy?.name || selected.subject)}</AvatarFallback></Avatar>
-                    <div>
-                      <p className="text-xs font-medium text-gray-200">{selected.requestedBy?.name || selected.subject}</p>
-                      <p className="text-[10px] text-gray-500">{selected.requestedBy?.role}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={statusColors[selected.status] as any} className="text-[10px]">{statusLabels[selected.status]}</Badge>
-                    <Button variant="outline" size="sm" className="h-7 text-xs">
-                      {statusLabels[selected.status]} ▾
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                  <div className="text-center text-[10px] text-gray-500 py-2">{formatDate(selected.createdAt)} · {timeAgo(selected.createdAt)} · ◷ Issue from {selected.entity}</div>
-                  {mockMessages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.sender === "admin" ? "justify-end" : "items-start gap-2"}`}>
-                      {msg.sender !== "admin" && (
-                        <Avatar className="w-7 h-7 flex-shrink-0">
-                          <AvatarFallback className="text-[9px]">{msg.sender === "kora" ? "🤖" : getInitials(msg.name)}</AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div className={`max-w-[80%] rounded-xl px-3 py-2 ${msg.sender === "admin" ? "bg-blue-600 text-white" : "bg-[#1e2d40] text-gray-200"}`}>
-                        {msg.sender !== "admin" && <p className="text-[10px] font-medium mb-0.5 text-gray-400">{msg.name}</p>}
-                        <p className="text-xs">{msg.content}</p>
-                        <p className={`text-[10px] mt-1 ${msg.sender === "admin" ? "text-blue-200" : "text-gray-500"}`}>{msg.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Reply Input */}
-                <div className="p-3 border-t border-[#1e2d40]">
-                  <div className="flex gap-2 mb-2">
-                    {["Reply", "Internal Note"].map((t) => (
-                      <button key={t} className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded">{t}</button>
-                    ))}
-                  </div>
-                  <Input placeholder="Type your message..." value={replyText} onChange={e => setReplyText(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && handleReply()} className="mb-2" />
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      {["🔗","📎","😊"].map(e => <button key={e} className="text-gray-500 hover:text-gray-300">{e}</button>)}
-                    </div>
-                    <Button size="sm" onClick={handleReply} className="h-7"><Send className="w-3 h-3 mr-1" />Send</Button>
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex flex-wrap gap-2 px-4 pb-3">
-                  {["Reset Password", "Unlock Account", "Refund Request", "Impersonate Customer", "Reassign User"].map((a) => (
-                    <button key={a} onClick={() => toast.info(a)}
-                      className="text-[10px] px-2 py-1 rounded-lg bg-[#1e2d40] text-gray-300 hover:bg-[#2a3547] transition-colors">{a}</button>
-                  ))}
-                </div>
+          <Card className={`${mobileView === "thread" ? "flex" : "hidden"} flex-col lg:flex lg:col-span-3`}>
+            {!selectedId ? (
+              <CardContent className="flex h-[calc(100vh-260px)] items-center justify-center">
+                <p className="text-sm text-gray-500">Select a ticket to view conversation</p>
+              </CardContent>
+            ) : detailLoading || !selected ? (
+              <CardContent className="space-y-3 p-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-40 w-full" />
               </CardContent>
             ) : (
-              <CardContent className="flex items-center justify-center h-full">
-                <p className="text-sm text-gray-500">Select a ticket to view details</p>
-              </CardContent>
-            )}
-          </Card>
-
-          {/* Right Detail Panel */}
-          <Card className="lg:col-span-1">
-            {selected && (
-              <CardContent className="pt-4 space-y-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Contact</p>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-8 h-8"><AvatarFallback className="text-xs">{getInitials(selected.requestedBy?.name || "?")}</AvatarFallback></Avatar>
-                    <div>
-                      <p className="text-xs font-medium text-gray-200">{selected.requestedBy?.name}</p>
-                      <p className="text-[10px] text-blue-400 truncate">{selected.requestedBy?.role?.includes("Customer") ? "customer@email.com" : "partner@email.com"}</p>
+              <CardContent className="flex h-[calc(100vh-240px)] flex-col p-0">
+                <div className="flex items-center justify-between border-b border-[#1e2d40] px-3 py-3 sm:px-4">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMobileView("list")}
+                      className="-ml-1 rounded-lg p-1.5 text-gray-300 hover:bg-[#1e2d40] lg:hidden"
+                      aria-label="Back"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <Avatar className="h-8 w-8 shrink-0">
+                      {ticketAuthor(selected).profileImage?.url ? (
+                        <AvatarImage
+                          src={ticketAuthor(selected).profileImage.url}
+                          alt={ticketAuthor(selected).name}
+                        />
+                      ) : (
+                        <AvatarFallback className="text-xs">
+                          {getInitials(ticketAuthor(selected).name || "T")}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-gray-200">
+                        {ticketAuthor(selected).name || "Unknown"}
+                      </p>
+                      <p className="truncate text-[10px] text-gray-500">
+                        {selected.ticket_id} · {TYPE_LABELS[selected.type] || selected.type}
+                      </p>
                     </div>
                   </div>
-                </div>
-
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between py-1.5 border-b border-[#1e2d40]">
-                    <span className="text-gray-500">Partner</span>
-                    <span className="text-gray-300">{selected.entity}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-[#1e2d40]">
-                    <span className="text-gray-500">Plan</span>
-                    <span className="text-gray-300">Business</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-[#1e2d40]">
-                    <span className="text-gray-500">Monthly Revenue</span>
-                    <span className="text-gray-300">€487</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-[#1e2d40]">
-                    <span className="text-gray-500">Total Revenue</span>
-                    <span className="text-gray-300">€2,847</span>
-                  </div>
-                  <div className="flex justify-between py-1.5">
-                    <span className="text-gray-500">Open Tickets</span>
-                    <span className="text-gray-300">3</span>
-                  </div>
-                </div>
-
-                <Button variant="outline" size="sm" className="w-full text-xs">View Full Profile</Button>
-
-                {/* Kora Assistant */}
-                <div className="bg-[#0d1a2d] border border-blue-600/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span>🤖</span>
-                    <p className="text-xs font-medium text-white">Kora Assistant</p>
-                  </div>
-                  <p className="text-xs text-gray-400 mb-2">This looks like a blocked account issue caused by failed login attempts.</p>
-                  <div className="space-y-1">
-                    <p className="text-[10px] text-blue-400">→ Unlock account</p>
-                    <p className="text-[10px] text-blue-400">→ Reset password</p>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={selected.status}
+                      onValueChange={(value) => statusMutation.mutate(value)}
+                      disabled={statusMutation.isPending}
+                    >
+                      <SelectTrigger className="h-7 w-36 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selected.status !== "closed" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => closeMutation.mutate()}
+                        disabled={closeMutation.isPending}
+                      >
+                        Close
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="space-y-2">
-                  {["Resolve Issue", "Escalate Issue", "Reassign Ticket"].map((a) => (
-                    <Button key={a} variant="secondary" size="sm" className="w-full text-xs" onClick={() => toast.info(a)}>{a}</Button>
-                  ))}
+                <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                  <div className="py-2 text-center text-[10px] text-gray-500">
+                    {formatDate(selected.createdAt)} · {selected.subject}
+                  </div>
+                  {(selected.replies || []).length === 0 ? (
+                    <p className="text-center text-xs text-gray-500">No messages yet.</p>
+                  ) : (
+                    (selected.replies || []).map((reply: any, index: number) => {
+                      const sender = reply.sender_id || {};
+                      const isAdmin = sender.role === "admin";
+                      return (
+                        <div
+                          key={reply._id || index}
+                          className={`flex ${isAdmin ? "justify-end" : "items-start gap-2"}`}
+                        >
+                          {!isAdmin ? (
+                            <Avatar className="h-7 w-7 shrink-0">
+                              {sender.profileImage?.url ? (
+                                <AvatarImage src={sender.profileImage.url} alt={sender.name} />
+                              ) : (
+                                <AvatarFallback className="text-[9px]">
+                                  {getInitials(sender.name || "?")}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                          ) : null}
+                          <div
+                            className={`max-w-[80%] rounded-xl px-3 py-2 ${
+                              isAdmin
+                                ? "bg-blue-600 text-white"
+                                : reply.isInternal
+                                ? "border border-amber-500/30 bg-amber-500/10 text-gray-200"
+                                : "bg-[#1e2d40] text-gray-200"
+                            }`}
+                          >
+                            {!isAdmin ? (
+                              <p className="mb-0.5 text-[10px] font-medium text-gray-400">
+                                {sender.name || "—"}
+                                {reply.isInternal ? (
+                                  <span className="ml-1 text-amber-400">(internal)</span>
+                                ) : null}
+                              </p>
+                            ) : null}
+                            <p className="whitespace-pre-wrap text-xs">{reply.message}</p>
+                            <p
+                              className={`mt-1 text-[10px] ${
+                                isAdmin ? "text-blue-200" : "text-gray-500"
+                              }`}
+                            >
+                              {timeAgo(reply.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                <div className="border-t border-[#1e2d40] p-3">
+                  <div className="mb-2 flex gap-2">
+                    <button
+                      onClick={() => setIsInternal(false)}
+                      className={`rounded px-2 py-1 text-xs ${
+                        !isInternal
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-400 hover:text-gray-200"
+                      }`}
+                    >
+                      Reply
+                    </button>
+                    <button
+                      onClick={() => setIsInternal(true)}
+                      className={`rounded px-2 py-1 text-xs ${
+                        isInternal
+                          ? "bg-amber-600 text-white"
+                          : "text-gray-400 hover:text-gray-200"
+                      }`}
+                    >
+                      Internal Note
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={isInternal ? "Internal note..." : "Type your reply..."}
+                      value={replyText}
+                      onChange={(event) => setReplyText(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          handleReply();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleReply}
+                      disabled={!replyText.trim() || replyMutation.isPending}
+                    >
+                      <Send className="mr-1 h-3 w-3" />
+                      Send
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             )}
           </Card>
         </div>
 
-        {/* Stats Footer */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-5">
-          {[
-            { label: "Open Tickets", value: "18", icon: AlertCircle, color: "text-blue-400" },
-            { label: "In Progress", value: "7", icon: Clock, color: "text-amber-400" },
-            { label: "Pending Approval", value: "5", icon: Clock, color: "text-purple-400" },
-            { label: "Avg. Response Time", value: "1h 24m", icon: Clock, color: "text-gray-400" },
-            { label: "SLA Breaches", value: "2", icon: XCircle, color: "text-red-400" },
-          ].map((s) => (
-            <Card key={s.label}>
+        <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-5">
+          {stats.map((stat) => (
+            <Card key={stat.label}>
               <CardContent className="pt-3 pb-3">
                 <div className="flex items-center gap-2">
-                  <s.icon className={`w-4 h-4 ${s.color}`} />
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
                   <div>
-                    <p className="text-base font-bold text-white">{s.value}</p>
-                    <p className="text-[10px] text-gray-400">{s.label}</p>
+                    <p className="text-base font-bold text-white">{stat.value}</p>
+                    <p className="text-[10px] text-gray-400">{stat.label}</p>
                   </div>
                 </div>
               </CardContent>

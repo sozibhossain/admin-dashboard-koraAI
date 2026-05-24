@@ -27,7 +27,11 @@ export const userApi = {
     api.put("/user/profile", data, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
-  changePassword: (data: object) => api.put("/user/change-password", data),
+  changePassword: (data: {
+    currentPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+  }) => api.put("/user/change-password", data),
 };
 
 // ─── Admin ───────────────────────────────────────────────────────────────────
@@ -42,6 +46,7 @@ export const adminApi = {
   getSystemActivity: (params?: object) =>
     api.get("/admin/activity", { params }),
   getPlatformSettings: () => api.get("/admin/settings"),
+  updatePlatformSettings: (data: object) => api.put("/admin/settings", data),
 };
 
 // ─── Partners ─────────────────────────────────────────────────────────────────
@@ -65,11 +70,10 @@ export const customersApi = {
   update: (id: string, data: object) => api.put(`/customers/${id}`, data),
   delete: (id: string) => api.delete(`/customers/${id}`),
   getHistory: (id: string) => api.get(`/customers/${id}/history`),
+  getStats: () => api.get("/customers/stats"),
   search: (q: string) => api.get("/customers/search", { params: { q } }),
-  import: (data: FormData) =>
-    api.post("/customers/import", data, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+  import: (customers: object[]) =>
+    api.post("/customers/import", { customers }),
 };
 
 // ─── Leads ────────────────────────────────────────────────────────────────────
@@ -81,8 +85,12 @@ export const leadsApi = {
   delete: (id: string) => api.delete(`/leads/${id}`),
   changeStatus: (id: string, data: { status: string }) =>
     api.patch(`/leads/${id}/status`, data),
+  bulkUpdateStatus: (data: { leadIds: string[]; status: string }) =>
+    api.post("/leads/bulk-status", data),
   generate: (data: object) => api.post("/leads/generate", data),
-  convertToCustomer: (id: string) => api.post(`/leads/${id}/convert`),
+  convertToCustomer: (id: string, data?: object) =>
+    api.post(`/leads/${id}/convert`, data || {}),
+  getAnalytics: () => api.get("/leads/analytics"),
 };
 
 // ─── Territories ──────────────────────────────────────────────────────────────
@@ -92,14 +100,25 @@ export const territoriesApi = {
   create: (data: object) => api.post("/territories", data),
   update: (id: string, data: object) => api.put(`/territories/${id}`, data),
   delete: (id: string) => api.delete(`/territories/${id}`),
+  getLeads: (id: string, params?: object) =>
+    api.get(`/territories/${id}/leads`, { params }),
+  getPerformance: (id: string) => api.get(`/territories/${id}/performance`),
+  unassignPartner: (id: string) => api.patch(`/territories/${id}/unassign`),
+  bulkAssign: (data: { territoryIds: string[]; partnerId: string }) =>
+    api.post("/territories/bulk-assign", data),
 };
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 export const analyticsApi = {
-  getSalesAnalytics: (params?: object) =>
-    api.get("/analytics", { params }),
-  getRevenueOverview: (params?: object) =>
-    api.get("/accounting/revenue", { params }),
+  getDashboard: () => api.get("/analytics/dashboard"),
+  getRevenue: (params?: object) => api.get("/analytics/revenue", { params }),
+  getPartners: () => api.get("/analytics/partners"),
+  getTerritories: () => api.get("/analytics/territories"),
+  getFunnel: () => api.get("/analytics/funnel"),
+  getTopPerformers: (params?: object) =>
+    api.get("/analytics/top-performers", { params }),
+  getTrends: () => api.get("/analytics/trends"),
+  export: () => api.get("/analytics/export", { responseType: "blob" }),
 };
 
 // ─── Workflows ────────────────────────────────────────────────────────────────
@@ -108,23 +127,34 @@ export const workflowsApi = {
   getById: (id: string) => api.get(`/workflows/${id}`),
   create: (data: object) => api.post("/workflows", data),
   update: (id: string, data: object) => api.put(`/workflows/${id}`, data),
-  delete: (id: string) => api.delete(`/workflows/${id}`),
-  execute: (id: string, data: object) =>
-    api.post(`/workflows/${id}/execute`, data),
+  execute: (data: { workflowType: string; payload?: object }) =>
+    api.post("/workflows/execute", data),
+  getHistory: (params?: object) => api.get("/workflows/history", { params }),
+  getStats: () => api.get("/workflows/stats"),
 };
 
 // ─── Approvals ────────────────────────────────────────────────────────────────
 export const approvalsApi = {
   getAll: (params?: object) => api.get("/approvals", { params }),
   getById: (id: string) => api.get(`/approvals/${id}`),
-  approve: (id: string) => api.patch(`/approvals/${id}/approve`),
+  approve: (id: string, data?: object) =>
+    api.patch(`/approvals/${id}/approve`, data || {}),
   reject: (id: string, data?: object) =>
-    api.patch(`/approvals/${id}/reject`, data),
+    api.patch(`/approvals/${id}/reject`, data || {}),
+  getStats: () => api.get("/approvals/stats"),
+  getHistory: (params?: object) => api.get("/approvals/history", { params }),
+  bulkApprove: (data: { approvalIds: string[] }) =>
+    api.post("/approvals/bulk", data),
 };
 
 // ─── Activity ─────────────────────────────────────────────────────────────────
 export const activityApi = {
   getAll: (params?: object) => api.get("/activity", { params }),
+  getStats: () => api.get("/activity/stats"),
+  filter: (params?: object) => api.get("/activity/filter", { params }),
+  export: () => api.get("/activity/export", { responseType: "blob" }),
+  getByEntity: (entityType: string, entityId: string, params?: object) =>
+    api.get(`/activity/${entityType}/${entityId}`, { params }),
 };
 
 // ─── Support ──────────────────────────────────────────────────────────────────
@@ -136,6 +166,9 @@ export const supportApi = {
   reply: (id: string, data: { message: string; isInternal?: boolean }) =>
     api.post(`/support/${id}/reply`, data),
   close: (id: string) => api.patch(`/support/${id}/close`),
+  assign: (id: string, data: { admin_id: string }) =>
+    api.patch(`/support/${id}/assign`, data),
+  getStats: () => api.get("/support/stats"),
 };
 
 // ─── Inbox ────────────────────────────────────────────────────────────────────
@@ -148,9 +181,10 @@ export const inboxApi = {
   sendMessage: (data: { recipientId: string; content: string }) => api.post("/inbox", data),
   deleteMessage: (conversationId: string, messageId: string) =>
     api.delete(`/inbox/${conversationId}/messages/${messageId}`),
+  getRecipients: (params?: { q?: string }) =>
+    api.get("/inbox/recipients", { params }),
 };
 
-<<<<<<< HEAD
 // ─── Services ─────────────────────────────────────────────────────────────────
 export const servicesApi = {
   getAll: (params?: object) => api.get("/services", { params }),
@@ -160,8 +194,6 @@ export const servicesApi = {
   delete: (id: string) => api.delete(`/services/${id}`),
 };
 
-=======
->>>>>>> 876d0471d98ddbc979b64b8ba5a90cf27cef92b7
 // ─── Calendar ─────────────────────────────────────────────────────────────────
 export const calendarApi = {
   getEvents: (params?: object) => api.get("/calendar", { params }),
@@ -182,7 +214,6 @@ export const appointmentsApi = {
     api.put(`/appointments/${id}`, data),
   getAvailableSlots: (params?: object) =>
     api.get("/appointments/available-slots", { params }),
-<<<<<<< HEAD
   getEmployees: (params?: object) =>
     api.get("/appointments/employees", { params }),
 };
@@ -190,8 +221,6 @@ export const appointmentsApi = {
 // ─── Employees (read-only for admin) ─────────────────────────────────────────
 export const employeesApi = {
   getAll: (params?: object) => api.get("/appointments/employees", { params }),
-=======
->>>>>>> 876d0471d98ddbc979b64b8ba5a90cf27cef92b7
 };
 
 // ─── Kora Assistant ──────────────────────────────────────────────────────────
