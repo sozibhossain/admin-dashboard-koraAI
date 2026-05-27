@@ -221,7 +221,7 @@ export default function ActivityPage() {
         }
       />
       <div className="space-y-5 p-3 sm:p-4 lg:p-6">
-        <div className="flex w-fit gap-1 rounded-lg bg-[#0d1a2d] p-1">
+        <div className="flex flex-wrap gap-1 rounded-lg bg-[#0d1a2d] p-1">
           {TABS.map((option) => (
             <button
               key={option.key}
