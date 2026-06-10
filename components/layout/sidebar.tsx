@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Sparkles, Calendar, Mail, Users, UserCheck,
   MapPin, BarChart3, GitBranch, CheckSquare, Activity,
   HeadphonesIcon, Settings, LogOut, ChevronLeft, ChevronRight,
-  X, Zap, Target, Scissors
+  X, Zap, Target, Scissors, CreditCard
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,12 +24,13 @@ const navItems = [
   { href: "/inbox", label: "Inbox", icon: Mail, badgeKey: "inbox" as const },
   { href: "/leads", label: "Leads", icon: Target, badgeKey: "leads" as const },
   { href: "/lead-generator", label: "Lead Generator", icon: Zap },
-  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/customers", label: "Bussinesses Owners", icon: Users },
   { href: "/services", label: "Services", icon: Scissors },
   { href: "/partners", label: "Partners", icon: UserCheck },
   { href: "/territories", label: "Territories", icon: MapPin },
   { href: "/analytics", label: "Sales Analytics", icon: BarChart3 },
   { href: "/workflows", label: "Workflows", icon: GitBranch },
+  { href: "/subscription", label: "Subscription", icon: CreditCard },
   { href: "/approvals", label: "Approvals", icon: CheckSquare, badgeKey: "approvals" as const },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/support", label: "Support", icon: HeadphonesIcon },

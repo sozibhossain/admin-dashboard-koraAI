@@ -268,3 +268,13 @@ export const earningsApi = {
   requestWithdrawal: (data: object) => api.post("/earnings/withdraw", data),
   exportReport: () => api.get("/earnings/export"),
 };
+
+// ─── Subscription plans (admin CRUD) ────────────────────────────────────────────
+export const subscriptionApi = {
+  getAllPlans: () => api.get("/subscription/admin/plans"),
+  getPlanById: (id: string) => api.get(`/subscription/admin/plans/${id}`),
+  createPlan: (data: object) => api.post("/subscription/admin/plans", data),
+  updatePlan: (id: string, data: object) =>
+    api.put(`/subscription/admin/plans/${id}`, data),
+  deletePlan: (id: string) => api.delete(`/subscription/admin/plans/${id}`),
+};
