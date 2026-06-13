@@ -37,8 +37,10 @@ export const userApi = {
 // ─── Admin ───────────────────────────────────────────────────────────────────
 export const adminApi = {
   getDashboardStats: () => api.get("/admin/dashboard"),
+  createUser: (data: object) => api.post("/admin/users", data),
   getAllUsers: (params?: object) => api.get("/admin/users", { params }),
   getUserById: (id: string) => api.get(`/admin/users/${id}`),
+  updateUser: (id: string, data: object) => api.put(`/admin/users/${id}`, data),
   updateUserRole: (id: string, data: { role: string }) =>
     api.patch(`/admin/users/${id}/role`, data),
   suspendUser: (id: string) => api.patch(`/admin/users/${id}/suspend`),
