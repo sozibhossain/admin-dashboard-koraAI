@@ -2,9 +2,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { customersApi } from "@/lib/api";
+import { toast } from "sonner";
+import { adminApi } from "@/lib/api";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,136 +25,177 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatCurrency, formatDate, getInitials, timeAgo } from "@/lib/utils";
-import { toast } from "sonner";
+import { formatDate, getInitials } from "@/lib/utils";
 import {
+  Building2,
   ChevronLeft,
   ChevronRight,
-  DollarSign,
   MoreHorizontal,
   Plus,
   Search,
-  TrendingUp,
+  ShieldCheck,
   UserCheck,
   Users,
 } from "lucide-react";
-import { CustomerFormDialog } from "@/components/customer-form-dialog";
-import { CustomerDetailsDialog } from "@/components/customer-details-dialog";
+import { BusinessOwnerFormDialog } from "@/components/business-owner-form-dialog";
+import { BusinessOwnerDetailsDialog } from "@/components/business-owner-details-dialog";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All status" },
   { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-  { value: "at_risk", label: "At risk" },
+  { value: "blocked", label: "Blocked" },
+  { value: "unverified", label: "Unverified" },
 ];
+
+type BusinessOwner = {
+  _id: string;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  role?: string;
+  isBlocked?: boolean;
+  verificationInfo?: { verified?: boolean };
+  addedBy?: string | null;
+  createdAt?: string;
+};
+
+const getOwnerStatus = (owner: BusinessOwner) => {
+  if (owner.isBlocked) return "blocked";
+  if (!owner.verificationInfo?.verified) return "unverified";
+  return "active";
+};
 
 const STATUS_BADGE: Record<string, "success" | "destructive" | "secondary"> = {
   active: "success",
-  inactive: "secondary",
-  at_risk: "destructive",
+  blocked: "destructive",
+  unverified: "secondary",
 };
 
 export default function CustomersPage() {
   const queryClient = useQueryClient();
-  const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [editing, setEditing] = useState<BusinessOwner | null>(null);
   const limit = 10;
 
-  const { data: customersResponse, isLoading: customersLoading } = useQuery({
-    queryKey: ["customers", page, search, statusFilter],
+  const { data: ownersResponse, isLoading } = useQuery({
+    queryKey: ["business-owners-directory"],
     queryFn: () =>
-      customersApi
-        .getAll({
-          page,
-          limit,
-          search: search || undefined,
-          status: statusFilter === "all" ? undefined : statusFilter,
-        })
+      adminApi
+        .getAllUsers({ role: "business_owner", page: 1, limit: 500 })
         .then((response) => response.data),
   });
 
-  const { data: statsResponse } = useQuery({
-    queryKey: ["customer-stats"],
-    queryFn: () => customersApi.getStats().then((response) => response.data?.data),
-  });
-
-  const customers: any[] = customersResponse?.data || [];
-  const meta = customersResponse?.meta || { total: 0, page: 1, totalPages: 1 };
-  const totalPages = meta.totalPages || 1;
-
-  const selectedCustomer = useMemo(
-    () => customers.find((customer) => customer._id === selectedId) || customers[0] || null,
-    [customers, selectedId]
+  const owners = useMemo<BusinessOwner[]>(
+    () =>
+      (ownersResponse?.data || []).filter(
+        (user: BusinessOwner) => user.role === "business_owner"
+      ),
+    [ownersResponse]
   );
 
-  const stats = [
-    {
-      label: "Total Customers",
-      value: statsResponse?.totalCustomers ?? "—",
-      icon: Users,
-      color: "bg-blue-600",
-    },
-    {
-      label: "New (30 days)",
-      value: statsResponse?.newCustomers ?? "—",
-      icon: UserCheck,
-      color: "bg-emerald-600",
-    },
-    {
-      label: "Active Customers",
-      value: statsResponse?.activeCustomers ?? "—",
-      icon: TrendingUp,
-      color: "bg-purple-600",
-    },
-    {
-      label: "Revenue per Customer",
-      value:
-        statsResponse?.avgRevenuePerCustomer != null
-          ? formatCurrency(statsResponse.avgRevenuePerCustomer)
-          : "—",
-      icon: DollarSign,
-      color: "bg-amber-600",
-    },
-  ];
+  const filteredOwners = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return owners.filter((owner) => {
+      const matchesSearch =
+        !query ||
+        owner.name?.toLowerCase().includes(query) ||
+        owner.email?.toLowerCase().includes(query) ||
+        owner.phoneNumber?.toLowerCase().includes(query);
+
+      const status = getOwnerStatus(owner);
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [owners, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOwners.length / limit));
+
+  const paginatedOwners = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredOwners.slice(start, start + limit);
+  }, [filteredOwners, page]);
+
+  const selectedOwner = useMemo(
+    () =>
+      filteredOwners.find((owner) => owner._id === selectedId) ||
+      paginatedOwners[0] ||
+      null,
+    [filteredOwners, paginatedOwners, selectedId]
+  );
+
+  const stats = useMemo(
+    () => [
+      {
+        label: "Total Owners",
+        value: owners.length,
+        icon: Users,
+        color: "bg-blue-600",
+      },
+      {
+        label: "Verified Owners",
+        value: owners.filter((owner) => owner.verificationInfo?.verified).length,
+        icon: ShieldCheck,
+        color: "bg-emerald-600",
+      },
+      {
+        label: "Active Owners",
+        value: owners.filter((owner) => getOwnerStatus(owner) === "active").length,
+        icon: UserCheck,
+        color: "bg-purple-600",
+      },
+      {
+        label: "Partner Added",
+        value: owners.filter((owner) => owner.addedBy).length,
+        icon: Building2,
+        color: "bg-amber-600",
+      },
+    ],
+    [owners]
+  );
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => customersApi.delete(id),
+    mutationFn: (id: string) => adminApi.deleteUser(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      queryClient.invalidateQueries({ queryKey: ["customer-stats"] });
-      toast.success("Customer deleted");
+      queryClient.invalidateQueries({ queryKey: ["business-owners-directory"] });
+      toast.success("Business owner deleted");
+      setDetailsOpen(false);
+      setEditing(null);
+      setSelectedId(null);
     },
     onError: (error: any) =>
       toast.error(
-        error?.response?.data?.message || error?.message || "Failed to delete customer"
+        error?.response?.data?.message || error?.message || "Failed to delete business owner"
       ),
   });
 
-  const handleEdit = (customer: any) => {
-    setEditing(customer);
-    setFormOpen(true);
-  };
-
-  const handleView = (customer: any) => {
-    setSelectedId(customer._id);
+  const handleView = (owner: BusinessOwner) => {
+    setSelectedId(owner._id);
     setDetailsOpen(true);
   };
 
-  const handleBook = (customer: any) => {
-    router.push(`/calendar?customer=${encodeURIComponent(customer._id)}`);
+  const handleEdit = (owner: BusinessOwner) => {
+    setEditing(owner);
+    setFormOpen(true);
+  };
+
+  const handleDelete = (owner: BusinessOwner) => {
+    if (!confirm(`Delete ${owner.name || "this business owner"}? This cannot be undone.`)) {
+      return;
+    }
+    deleteMutation.mutate(owner._id);
   };
 
   return (
     <div>
       <Header
-        title="Customers"
-        subtitle="Manage your customers and build stronger relationships."
+        title="Business Owners"
+        subtitle="Manage all registered business owners across the platform."
         action={
           <Button
             size="sm"
@@ -164,7 +205,7 @@ export default function CustomersPage() {
             }}
           >
             <Plus className="mr-1 h-4 w-4" />
-            Add Customer
+            Add Business Owner
           </Button>
         }
       />
@@ -196,7 +237,7 @@ export default function CustomersPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                   <Input
-                    placeholder="Search customers..."
+                    placeholder="Search business owners..."
                     value={search}
                     onChange={(event) => {
                       setSearch(event.target.value);
@@ -212,7 +253,7 @@ export default function CustomersPage() {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="w-full sm:w-36">
+                  <SelectTrigger className="w-full sm:w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -230,127 +271,108 @@ export default function CustomersPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[#1e2d40]">
-                      {["Customer", "Status", "Last Visit", "Total Spend", "Tags", ""].map(
-                        (heading) => (
-                          <th
-                            key={heading}
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500"
-                          >
-                            {heading}
-                          </th>
-                        )
-                      )}
+                      {["Owner", "Status", "Phone", "Source", "Joined", ""].map((heading) => (
+                        <th
+                          key={heading}
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500"
+                        >
+                          {heading}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {customersLoading ? (
+                    {isLoading ? (
                       Array.from({ length: 6 }).map((_, rowIndex) => (
                         <tr key={rowIndex} className="border-b border-[#1e2d40]">
                           {Array.from({ length: 6 }).map((_, cellIndex) => (
                             <td key={cellIndex} className="px-4 py-3">
-                              <Skeleton className="h-4 w-16" />
+                              <Skeleton className="h-4 w-20" />
                             </td>
                           ))}
                         </tr>
                       ))
-                    ) : customers.length === 0 ? (
+                    ) : paginatedOwners.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">
-                          {search || statusFilter !== "all"
-                            ? "No customers match your filters."
-                            : "No customers yet. Add your first one to get started."}
+                          No business owners match your filters.
                         </td>
                       </tr>
                     ) : (
-                      customers.map((customer) => (
-                        <tr
-                          key={customer._id}
-                          className={`cursor-pointer border-b border-[#1e2d40] transition-colors ${
-                            selectedCustomer?._id === customer._id
-                              ? "bg-blue-600/10"
-                              : "hover:bg-[#0d1a2d]"
-                          }`}
-                          onClick={() => setSelectedId(customer._id)}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-xs">
-                                  {getInitials(customer.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="text-xs font-medium text-gray-200">
-                                  {customer.name}
-                                </p>
-                                <p className="text-[10px] text-gray-500">
-                                  {customer.email || customer.phone}
-                                </p>
+                      paginatedOwners.map((owner) => {
+                        const status = getOwnerStatus(owner);
+                        return (
+                          <tr
+                            key={owner._id}
+                            className={`cursor-pointer border-b border-[#1e2d40] transition-colors ${
+                              selectedOwner?._id === owner._id
+                                ? "bg-blue-600/10"
+                                : "hover:bg-[#0d1a2d]"
+                            }`}
+                            onClick={() => setSelectedId(owner._id)}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback className="text-xs">
+                                    {getInitials(owner.name || "BO")}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-xs font-medium text-gray-200">
+                                    {owner.name || "Unnamed owner"}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500">
+                                    {owner.email || "No email"}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant={STATUS_BADGE[customer.status] || "secondary"}>
-                              {customer.status?.replace("_", " ") || "—"}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-gray-400">
-                            {customer.lastAppointment ? timeAgo(customer.lastAppointment) : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-xs font-medium text-gray-200">
-                            {formatCurrency(customer.totalSpend || 0)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {(customer.tags || []).slice(0, 3).map((tag: string) => (
-                                <span
-                                  key={tag}
-                                  className="rounded bg-blue-600/20 px-1.5 py-0.5 text-[10px] text-blue-400"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleView(customer)}>
-                                  View Profile
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(customer)}>
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleBook(customer)}>
-                                  Book Appointment
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-red-400"
-                                  onClick={() => {
-                                    if (
-                                      confirm(`Delete ${customer.name}? This cannot be undone.`)
-                                    ) {
-                                      deleteMutation.mutate(customer._id);
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant={STATUS_BADGE[status] || "secondary"}>
+                                {status}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-400">
+                              {owner.phoneNumber || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-400">
+                              {owner.addedBy ? "Sales partner" : "Direct signup"}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-400">
+                              {owner.createdAt ? formatDate(owner.createdAt) : "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleView(owner)}>
+                                    View Profile
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEdit(owner)}>
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-red-400"
+                                    onClick={() => handleDelete(owner)}
+                                  >
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -358,12 +380,12 @@ export default function CustomersPage() {
 
               <div className="flex items-center justify-between border-t border-[#1e2d40] px-4 py-3">
                 <p className="text-xs text-gray-500">
-                  {meta.total > 0
-                    ? `${(page - 1) * limit + 1}–${Math.min(
+                  {filteredOwners.length > 0
+                    ? `${(page - 1) * limit + 1}-${Math.min(
                         page * limit,
-                        meta.total
-                      )} of ${meta.total} customers`
-                    : "0 customers"}
+                        filteredOwners.length
+                      )} of ${filteredOwners.length} business owners`
+                    : "0 business owners"}
                 </p>
                 <div className="flex items-center gap-1">
                   <Button
@@ -376,13 +398,13 @@ export default function CustomersPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="px-2 text-xs text-gray-300">
-                    Page {page} of {totalPages || 1}
+                    Page {page} of {totalPages}
                   </span>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={() => setPage((current) => current + 1)}
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
                     disabled={page >= totalPages}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -393,71 +415,59 @@ export default function CustomersPage() {
           </Card>
 
           <div className="space-y-4">
-            {selectedCustomer ? (
+            {selectedOwner ? (
               <Card>
                 <CardContent className="pt-4">
                   <div className="mb-4 flex items-start gap-3">
                     <Avatar className="h-12 w-12">
-                      <AvatarFallback>{getInitials(selectedCustomer.name)}</AvatarFallback>
+                      <AvatarFallback>{getInitials(selectedOwner.name || "BO")}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold text-gray-100">
-                        {selectedCustomer.name}
+                        {selectedOwner.name || "Unnamed owner"}
                       </p>
                       <p className="truncate text-xs text-gray-400">
-                        {selectedCustomer.email || "—"}
+                        {selectedOwner.email || "—"}
                       </p>
                       <p className="truncate text-[11px] text-gray-500">
-                        {selectedCustomer.phone || ""}
+                        {selectedOwner.phoneNumber || "—"}
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between border-b border-[#1e2d40] py-1.5">
-                      <span className="text-gray-500">Total spend</span>
-                      <span className="font-medium text-gray-200">
-                        {formatCurrency(selectedCustomer.totalSpend || 0)}
+                      <span className="text-gray-500">Role</span>
+                      <span className="text-gray-200">
+                        {selectedOwner.role?.replace(/_/g, " ") || "—"}
                       </span>
                     </div>
                     <div className="flex justify-between border-b border-[#1e2d40] py-1.5">
-                      <span className="text-gray-500">Appointments</span>
-                      <span className="text-gray-200">
-                        {selectedCustomer.totalAppointments || 0}
+                      <span className="text-gray-500">Status</span>
+                      <span className="text-gray-200 capitalize">
+                        {getOwnerStatus(selectedOwner)}
                       </span>
                     </div>
                     <div className="flex justify-between border-b border-[#1e2d40] py-1.5">
-                      <span className="text-gray-500">Last visit</span>
+                      <span className="text-gray-500">Source</span>
                       <span className="text-gray-200">
-                        {selectedCustomer.lastAppointment
-                          ? timeAgo(selectedCustomer.lastAppointment)
-                          : "—"}
+                        {selectedOwner.addedBy ? "Sales partner" : "Direct signup"}
                       </span>
                     </div>
                     <div className="flex justify-between py-1.5">
-                      <span className="text-gray-500">Customer since</span>
+                      <span className="text-gray-500">Joined</span>
                       <span className="text-gray-200">
-                        {selectedCustomer.createdAt
-                          ? formatDate(selectedCustomer.createdAt)
-                          : "—"}
+                        {selectedOwner.createdAt ? formatDate(selectedOwner.createdAt) : "—"}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Button size="sm" variant="outline" onClick={() => handleView(selectedCustomer)}>
+                    <Button size="sm" variant="outline" onClick={() => handleView(selectedOwner)}>
                       View Profile
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(selectedCustomer)}>
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(selectedOwner)}>
                       Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="col-span-2"
-                      onClick={() => handleBook(selectedCustomer)}
-                    >
-                      Book Appointment
                     </Button>
                   </div>
                 </CardContent>
@@ -467,19 +477,19 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <CustomerFormDialog
+      <BusinessOwnerFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        customer={editing}
+        owner={editing}
       />
 
-      <CustomerDetailsDialog
+      <BusinessOwnerDetailsDialog
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
-        customerId={selectedCustomer?._id || null}
+        ownerId={selectedOwner?._id || null}
         onEdit={() => {
           setDetailsOpen(false);
-          setEditing(selectedCustomer);
+          setEditing(selectedOwner);
           setFormOpen(true);
         }}
       />
