@@ -249,9 +249,12 @@ export const employeesApi = {
 // ─── Kora Assistant ──────────────────────────────────────────────────────────
 export const koraAssistantApi = {
   sendMessage: (data: { message: string }) =>
-    api.post("/kora-assistant", data),
+    api.post("/kora-assistant/message", data),
   getHistory: (params?: object) =>
-    api.get("/kora-assistant", { params }),
+    api.get("/kora-assistant/history", { params }),
+  getSuggestions: () => api.get("/kora-assistant/suggestions"),
+  getCapabilities: () => api.get("/kora-assistant/capabilities"),
+  clearHistory: () => api.delete("/kora-assistant/history"),
 };
 
 // ─── Notifications ───────────────────────────────────────────────────────────
@@ -260,6 +263,12 @@ export const notificationsApi = {
   getUnreadCount: () => api.get("/notification/unread-count"),
   markRead: (id: string) => api.put(`/notification/${id}/read`),
   markAllRead: () => api.put("/notification/read-all"),
+};
+
+export const aiDataApi = {
+  create: (data: { message: string }) => api.post("/ai-data/create-ai-data", data),
+  getAll: () => api.get("/ai-data/get-ai-data"),
+  delete: (id: string) => api.delete(`/ai-data/delete-ai-data/${id}`),
 };
 
 // ─── Earnings ─────────────────────────────────────────────────────────────────
