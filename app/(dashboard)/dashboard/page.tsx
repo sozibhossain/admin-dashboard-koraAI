@@ -2,13 +2,13 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, aiDataApi } from "@/lib/api";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { KoraOrb } from "@/components/kora-orb";
 import { asArray, formatCurrency, timeAgo } from "@/lib/utils";
 import {
   TrendingUp,
@@ -423,7 +423,14 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">
               <div className="flex items-start gap-3">
-                <KoraOrb size={44} />
+                <Image
+                  src="/kora.png"
+                  alt="Kora"
+                  width={44}
+                  height={44}
+                  unoptimized
+                  className="kora-image h-11 w-11 shrink-0 object-contain"
+                />
                 <div className="rounded-2xl rounded-tl-sm bg-[#0d1a2d] px-3 py-2 text-xs text-gray-200">
                   Hi Admin! 👋
                   <br />
