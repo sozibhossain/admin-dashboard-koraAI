@@ -5,6 +5,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, aiDataApi } from "@/lib/api";
+import { AdminDashboardReference } from "@/components/admin-dashboard-reference";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +58,8 @@ const smartInsightIcons = [
   { icon: CheckCircle2, color: "bg-emerald-500/15 text-emerald-400" },
 ];
 
-export default function AdminDashboardPage() {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function LegacyAdminDashboardPage() {
   const queryClient = useQueryClient();
   const [chatInput, setChatInput] = useState("");
   const [chatReply, setChatReply] = useState<string | null>(null);
@@ -494,3 +496,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+export default AdminDashboardReference;
