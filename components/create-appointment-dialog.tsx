@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { appointmentsApi, calendarApi } from "@/lib/api";
+import { appointmentsApi, calendarApi, customersApi, employeesApi } from "@/lib/api";
+import { asArray } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -57,6 +58,15 @@ const LOCATION_OPTIONS = [
   "Downtown Salon",
   "Mobile Visit",
   "Customer Location",
+];
+
+const EVENT_TYPE_OPTIONS = [
+  "Internal Meeting",
+  "Partner Call",
+  "Customer Meeting",
+  "Sales Review",
+  "Support Review",
+  "Platform Review",
 ];
 
 const toDateValue = (date: Date) => {
@@ -121,21 +131,30 @@ const formatDateOnlyLabel = (value: string) => {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultDate?: Date | null;
   onCreated?: () => void;
 };
 
 export function CreateAppointmentDialog({
   open,
   onOpenChange,
+  defaultDate = null,
   onCreated,
 }: Props) {
   const queryClient = useQueryClient();
 
   const now = useMemo(() => new Date(), []);
-  const oneHourLater = useMemo(() => new Date(Date.now() + 60 * 60 * 1000), []);
+  const oneHourLater = useMemo(() => new Date(now.getTime() + 60 * 60 * 1000), [now]);
+  const defaultDateValue = useMemo(
+    () => toDateValue(defaultDate || now),
+    [defaultDate, now]
+  );
 
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(toDateValue(now));
+  const [customer, setCustomer] = useState("");
+  const [employee, setEmployee] = useState("");
+  const [eventType, setEventType] = useState(EVENT_TYPE_OPTIONS[0]);
+  const [date, setDate] = useState(defaultDateValue);
   const [startTime, setStartTime] = useState(toTimeValue(now));
   const [endTime, setEndTime] = useState(toTimeValue(oneHourLater));
   const [duration, setDuration] = useState(60);
@@ -149,11 +168,41 @@ export function CreateAppointmentDialog({
   const [timePickerOpen, setTimePickerOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const { data: customersResponse } = useQuery({
+    queryKey: ["calendar-create-customers"],
+    queryFn: () => customersApi.getAll({ limit: 100 }).then((response) => response.data),
+    enabled: open,
+  });
+
+  const { data: employeesResponse } = useQuery({
+    queryKey: ["calendar-create-employees"],
+    queryFn: () => employeesApi.getAll({ limit: 100 }).then((response) => response.data),
+    enabled: open,
+  });
+
+  const customerOptions = asArray(
+    customersResponse?.data?.customers ||
+      customersResponse?.data?.data?.customers ||
+      customersResponse?.data?.data ||
+      customersResponse?.data ||
+      customersResponse
+  );
+  const employeeOptions = asArray(
+    employeesResponse?.data?.employees ||
+      employeesResponse?.data?.data?.employees ||
+      employeesResponse?.data?.data ||
+      employeesResponse?.data ||
+      employeesResponse
+  );
+
   const resetForm = () => {
     const current = new Date();
     const later = new Date(current.getTime() + 60 * 60 * 1000);
     setTitle("");
-    setDate(toDateValue(current));
+    setCustomer("");
+    setEmployee("");
+    setEventType(EVENT_TYPE_OPTIONS[0]);
+    setDate(defaultDateValue);
     setStartTime(toTimeValue(current));
     setEndTime(toTimeValue(later));
     setDuration(60);
@@ -164,17 +213,13 @@ export function CreateAppointmentDialog({
     setColor(COLOR_SWATCHES[0]);
   };
 
-  useEffect(() => {
-    if (!open) {
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
       resetForm();
       setSubmitError(null);
     }
-  }, [open]);
-
-  useEffect(() => {
-    if (submitError) setSubmitError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, startTime, endTime, allDay]);
+    onOpenChange(nextOpen);
+  };
 
   const handleDurationChange = (value: number) => {
     setDuration(value);
@@ -191,8 +236,11 @@ export function CreateAppointmentDialog({
         appointmentDate: date,
         startTime: effectiveStart,
         endTime: effectiveEnd,
+        customer,
+        employee,
         bookingNotes: notes,
         title,
+        service: eventType,
         location,
         color,
       });
@@ -225,11 +273,13 @@ export function CreateAppointmentDialog({
 
   const canSubmit =
     Boolean(date) &&
-    (allDay || (Boolean(startTime) && Boolean(endTime))) &&
+    Boolean(customer) &&
+    Boolean(employee) &&
+    (allDay || (Boolean(startTime) && Boolean(endTime) && minutesBetween(startTime, endTime) > 0)) &&
     !createMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -243,6 +293,60 @@ export function CreateAppointmentDialog({
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {/* LEFT COLUMN */}
           <div className="space-y-4">
+            {/* Customer */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-300">Customer</label>
+              <Select value={customer} onValueChange={setCustomer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select customer..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {customerOptions.length === 0 ? (
+                    <SelectItem value="no-customers" disabled>
+                      No customers found
+                    </SelectItem>
+                  ) : null}
+                  {customerOptions.map((item: any, index: number) => {
+                    const id = String(item._id || item.id || index);
+                    const name = item.name || item.fullName || item.email || "Customer";
+                    return (
+                      <SelectItem key={id} value={id}>
+                        {name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Assigned User */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-300">Assigned User</label>
+              <Select value={employee} onValueChange={setEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select admin, partner, or employee..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {employeeOptions.length === 0 ? (
+                    <SelectItem value="no-users" disabled>
+                      No users found
+                    </SelectItem>
+                  ) : null}
+                  {employeeOptions.map((item: any, index: number) => {
+                    const user = item.userId || item.user || item;
+                    const id = String(user._id || item._id || item.id || index);
+                    const name = user.name || item.name || user.email || "User";
+                    const role = user.role || item.role || "calendar user";
+                    return (
+                      <SelectItem key={id} value={id}>
+                        {name} - {String(role).replace(/_/g, " ")}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-300">Date</label>
@@ -324,6 +428,23 @@ export function CreateAppointmentDialog({
 
           {/* RIGHT COLUMN */}
           <div className="space-y-4">
+            {/* Event Type */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-300">Event Type</label>
+              <Select value={eventType} onValueChange={setEventType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Title */}
             <div className="space-y-2">
               <label className="flex items-center justify-between text-xs font-medium text-gray-300">
@@ -348,9 +469,12 @@ export function CreateAppointmentDialog({
                 onValueChange={(value) => handleDurationChange(Number(value))}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder={`${duration} min`} />
                 </SelectTrigger>
                 <SelectContent>
+                  {DURATION_OPTIONS.every((option) => option.value !== duration) ? (
+                    <SelectItem value={String(duration)}>{duration} min</SelectItem>
+                  ) : null}
                   {DURATION_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={String(option.value)}>
                       {option.label}
@@ -438,7 +562,7 @@ export function CreateAppointmentDialog({
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleDialogOpenChange(false)}
               disabled={createMutation.isPending}
             >
               Cancel
