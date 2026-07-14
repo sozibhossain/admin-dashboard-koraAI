@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { adminApi, userApi } from "@/lib/api";
@@ -22,6 +22,8 @@ import { formatDate, timeAgo } from "@/lib/utils";
 import {
   Bell,
   CheckSquare,
+  Eye,
+  EyeOff,
   GitBranch,
   Globe,
   HeadphonesIcon,
@@ -951,24 +953,21 @@ function ProfilePanel({
           <div className="grid grid-cols-1 gap-3">
             <div className="space-y-1.5">
               <Label>Current password</Label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
               />
             </div>
             <div className="space-y-1.5">
               <Label>New password</Label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
               />
             </div>
             <div className="space-y-1.5">
               <Label>Confirm new password</Label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={confirmNewPassword}
                 onChange={(event) => setConfirmNewPassword(event.target.value)}
               />
@@ -989,6 +988,28 @@ function ProfilePanel({
           </Button>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function PasswordInput(props: ComponentProps<typeof Input>) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <div className="relative">
+      <Input
+        {...props}
+        type={showPassword ? "text" : "password"}
+        className={`pr-10 ${props.className ?? ""}`.trim()}
+      />
+      <button
+        type="button"
+        onClick={() => setShowPassword((value) => !value)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-white"
+        aria-label={showPassword ? "Hide password" : "Show password"}
+      >
+        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   BarChart3,
   Bell,
   Bot,
-  Check,
   CheckCircle2,
   ChevronRight,
   CircleDollarSign,
@@ -219,8 +218,8 @@ export function AdminDashboardReference() {
   }
 
   return (
-    <div className="dashboard-page bg-[#020a14] px-[clamp(0.75rem,1.5vw,1.25rem)] py-[clamp(0.75rem,1.5vw,1.25rem)] text-[#dce7f7]">
-      <div className="mb-[clamp(0.75rem,1.4vw,1.5rem)] flex items-start justify-between gap-6">
+    <div className="dashboard-page flex flex-col bg-[#020a14] px-[clamp(0.75rem,1.5vw,1.25rem)] py-[clamp(0.75rem,1.5vw,1.25rem)] text-[#dce7f7]">
+      <div className="mb-[clamp(0.75rem,1.4vw,1.25rem)] flex shrink-0 items-start justify-between gap-6">
         <div>
           <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-white">Dashboard</h1>
           <p className="mt-2 text-[14px] text-[#c5cfdd]">Welcome back, Admin. Here&apos;s what&apos;s happening in your system.</p>
@@ -248,12 +247,12 @@ export function AdminDashboardReference() {
         </div>
       </div>
 
-      <div className="dashboard-kpi-grid">
+      <div className="dashboard-kpi-grid shrink-0">
         {stats.map((stat) => <MetricCard key={stat.title} {...stat} />)}
       </div>
 
-      <div className="mt-4 grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_355px]">
-        <div className="min-h-0 space-y-4">
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_355px]">
+        <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.85fr)]">
             <section className={`${panelClass} min-h-0`}>
               <PanelTitle title="Revenue Overview" />
@@ -318,10 +317,10 @@ export function AdminDashboardReference() {
             </section>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-            <section className={`${panelClass} min-h-0`}>
+          <div className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+            <section className={`${panelClass} flex min-h-0 flex-col`}>
               <PanelTitle title="Top Performing Partners" action={false} />
-              <div className="px-5 pb-4">
+              <div className="min-h-0 flex-1 px-5 pb-4">
                 <div className="grid grid-cols-[42px_minmax(150px,1fr)_96px_112px_132px] border-b border-[#16304d] pb-3 text-[11px] text-[#8796ab]">
                   <span />
                   <span>Partner</span>
@@ -354,9 +353,9 @@ export function AdminDashboardReference() {
               </div>
             </section>
 
-            <section className={`${panelClass} min-h-0`}>
+            <section className={`${panelClass} flex min-h-0 flex-col`}>
               <PanelTitle title="Recent Activity" action={false} />
-              <div className="space-y-0 px-5 pb-4">
+              <div className="min-h-0 flex-1 space-y-0 px-5 pb-4">
                 {recentActivity.slice(0, activityPageSize).map((item: any, index: number) => {
                   const ToneIcon = [User, CircleDollarSign, CheckCircle2, Users, TrendingUp][index % 5];
                   const tone = item.tone || ["blue", "amber", "green", "purple", "blue"][index % 5];
@@ -378,9 +377,9 @@ export function AdminDashboardReference() {
           </div>
         </div>
 
-        <aside className="space-y-4">
-          <section className={`${panelClass} min-h-0 p-4`}>
-            <div className="mb-4 flex items-center justify-between">
+        <aside className="min-h-0 overflow-hidden">
+          <section className={`${panelClass} flex h-full min-h-0 flex-col overflow-hidden p-4`}>
+            <div className="mb-3 flex shrink-0 items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#18d589] shadow-[0_0_12px_rgba(24,213,137,0.8)]" />
                 <h2 className="text-[14px] font-semibold text-white">Kora Assistant</h2>
@@ -389,20 +388,20 @@ export function AdminDashboardReference() {
               </div>
               <MoreHorizontal className="h-5 w-5 text-[#a0aec0]" />
             </div>
-            <div className="flex items-center justify-center gap-7 py-2">
-              <div className="relative h-[78px] w-[78px]">
-                <Image src="/kora.png" alt="Kora assistant" fill sizes="78px" className="object-contain drop-shadow-[0_0_18px_rgba(0,184,255,0.85)]" priority />
+            <div className="flex shrink-0 items-center justify-center gap-5 py-1">
+              <div className="relative h-16 w-16">
+                <Image src="/kora.png" alt="Kora assistant" fill sizes="64px" className="object-contain drop-shadow-[0_0_18px_rgba(0,184,255,0.85)]" priority />
               </div>
               <div>
                 <p className="text-[14px] font-semibold text-[#f1f6ff]">Hi Admin!</p>
                 <p className="mt-2 text-[13px] text-[#b6c3d5]">Here&apos;s what I found for you today.</p>
               </div>
             </div>
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 shrink-0 space-y-2">
               {insightItems.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <button key={item.title} className="flex h-[57px] w-full items-center gap-3 rounded-[8px] border border-[#16314f] bg-[#0b1c32] px-3 text-left hover:bg-[#0f263f]">
+                  <button key={item.title} className="flex h-[52px] w-full items-center gap-3 rounded-[8px] border border-[#16314f] bg-[#0b1c32] px-3 text-left hover:bg-[#0f263f]">
                     <span className={`flex h-8 w-8 items-center justify-center rounded-[7px] ring-1 ${iconTone[item.tone]}`}>
                       <Icon className="h-4 w-4" />
                     </span>
@@ -415,22 +414,24 @@ export function AdminDashboardReference() {
                 );
               })}
             </div>
-            <div className="mt-4 flex justify-end">
-              <div className="max-w-[230px] rounded-[8px] bg-[#0648c8] px-4 py-3 text-[12px] leading-5 text-white">
-                Show me partners with low conversion rate.
-                <div className="mt-1 text-right text-[10px] text-[#bdd4ff]">10:45 AM</div>
+            <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+              <div className="flex justify-end">
+                <div className="max-w-[230px] rounded-[8px] bg-[#0648c8] px-4 py-2.5 text-[12px] leading-5 text-white">
+                  Show me partners with low conversion rate.
+                  <div className="mt-1 text-right text-[10px] text-[#bdd4ff]">10:45 AM</div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-start gap-3">
+                <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#00b7ff] text-[#00c2ff]">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className="rounded-[8px] bg-[#0b1c32] px-4 py-2.5 text-[12px] leading-5 text-[#d9e4f3]">
+                  {chatReply || lastConversation?.aireplay || "Here are the partners with the lowest conversion rates this month."}
+                  <button className="mt-2 block rounded-[5px] border border-[#164d8f] px-3 py-1 text-[12px] font-semibold text-[#4aa4ff]">View Report</button>
+                </div>
               </div>
             </div>
-            <div className="mt-3 flex items-start gap-3">
-              <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#00b7ff] text-[#00c2ff]">
-                <Bot className="h-4 w-4" />
-              </div>
-              <div className="rounded-[8px] bg-[#0b1c32] px-4 py-3 text-[12px] leading-5 text-[#d9e4f3]">
-                {chatReply || lastConversation?.aireplay || "Here are the partners with the lowest conversion rates this month."}
-                <button className="mt-2 block rounded-[5px] border border-[#164d8f] px-3 py-1 text-[12px] font-semibold text-[#4aa4ff]">View Report</button>
-              </div>
-            </div>
-            <div className="relative mt-4">
+            <div className="relative mt-3 shrink-0">
               <input
                 value={chatInput}
                 onChange={(event) => setChatInput(event.target.value)}
@@ -438,7 +439,7 @@ export function AdminDashboardReference() {
                 placeholder="Type your message..."
                 className="h-11 w-full rounded-[8px] border border-[#183657] bg-[#0b1c32] px-4 pr-12 text-[12px] text-white outline-none placeholder:text-[#8290a3]"
               />
-              <button onClick={handleSend} className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#0757e6] text-white">
+              <button onClick={handleSend} className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[6px] bg-[#0757e6] text-white">
                 <Send className="h-4 w-4" />
               </button>
             </div>
