@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -24,10 +25,9 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Admin-only: check role
   if (isLoggedIn && !isAuthPage) {
     const role = req.auth?.user?.role;
-    if (role !== "admin") {
+    if (!isAdminRole(role)) {
       return NextResponse.redirect(loginUrl(req, "role_not_allowed"));
     }
   }
