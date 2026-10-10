@@ -1,0 +1,33 @@
+"use client";
+import { DashboardSelect } from "@/components/ui/dashboard-select";
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { Folder, MessageSquare, ArrowUpRight, MoreHorizontal, ChevronLeft } from "lucide-react";
+import { novya, rowsOf, display, errorMessage, RecordData } from "@/lib/novya";
+import { PageHeading, QueryState, SearchField, Empty } from "./primitives";
+import { KoraFolderDialog } from "./kora-folder-dialog";
+import { MoveConversation } from "./move-conversation";
+import { dateLabel, linkedId, KoraPagination } from "./kora-ui";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+export function KoraFolders({ id, form }: { id?: string; form?: boolean }) {
+  const [search, setSearch] = useState(""), [sort, setSort] = useState("updated"), [page, setPage] = useState(1);
+  const router = useRouter();
+  const folders = useQuery({ queryKey: ["novya", "kora", "folders"], queryFn: () => novya.get("/kora/folders") });
+  const detail = useQuery({ queryKey: ["novya", "kora", "folder", id], queryFn: () => novya.get(`/kora/folders/${id}`), enabled: !!id });
+  const recent = useQuery({ queryKey: ["novya", "kora", "conversations", "recent", search, page, sort], queryFn: () => novya.get("/kora/conversations", { limit: 12, q: search, page, sortBy: sort === "name" ? "title" : "lastMessageAt", sortDir: sort === "name" ? "asc" : "desc" }), enabled: !id });
+  const folder = detail.data?.data;
+  const matches = (row: RecordData) => `${row.name ?? row.title ?? ""} ${row.description ?? ""}`.toLowerCase().includes(search.toLowerCase());
+  const compare = (a: RecordData, b: RecordData) => sort === "name" ? String(a.name ?? a.title).localeCompare(String(b.name ?? b.title)) : new Date(String(b.lastMessageAt ?? b.updatedAt ?? 0)).getTime() - new Date(String(a.lastMessageAt ?? a.updatedAt ?? 0)).getTime();
+  const cards = rowsOf(folders.data?.data).filter(matches).sort(compare), conversations = rowsOf(id ? folder?.conversations : recent.data?.data).filter(matches).sort(compare);
+  return <div className="kr-page kr-folders"><PageHeading title={id ? display(folder?.name ?? "Folder") : "Folders"} subtitle={id ? display(folder?.description ?? "Conversations saved in this folder.") : "Organize Kora conversations by workspace, team, and responsibility."} action={<>{id && <Link className="nv-button" href="/kora/folders"><ChevronLeft size={13}/>All folders</Link>}{(!id || folder) && <KoraFolderDialog key={String(folder?._id ?? "create")} folder={folder}/>}</>}/><div className="nv-toolbar"><SearchField value={search} onChange={value => { setSearch(value); setPage(1); }} placeholder="Search folders and conversations"/><DashboardSelect className="nv-filter kr-sort" aria-label="Sort folders and conversations" value={sort} onChange={e => { setSort(e.target.value); setPage(1); }}><option value="updated">Last updated</option><option value="name">Name</option></DashboardSelect></div><QueryState loading={folders.isPending || (id ? detail.isPending : recent.isPending)} error={folders.error || detail.error || recent.error ? errorMessage(folders.error || detail.error || recent.error) : undefined} retry={() => { folders.refetch(); if (id) detail.refetch(); else recent.refetch(); }}/>
+    {!id && folders.isSuccess && <section><h2 className="kr-section-title">Chat folders</h2><div className="kr-folder-grid">{cards.map(row => <Link href={`/kora/folders/${row._id}`} className="nv-folder-card" key={String(row._id)}><div><Folder size={25}/><strong>{display(row.name)}</strong></div><p>{display(row.description)}</p><footer><span>{display(row.conversationCount)} conversations</span><ArrowUpRight size={14}/></footer></Link>)}</div>{!cards.length && <Empty title={search ? "No matching folders" : "No chat folders yet"} description="Create a folder to organize your conversations."/>}</section>}
+    {(id ? detail.isSuccess : recent.isSuccess) && <section><h2 className="kr-section-title">{id ? "Conversations" : "Recent conversations"}</h2><div className={id ? "kr-folder-conversations" : "nv-conversation-grid"}>{conversations.map(row => <div className="kr-conversation-card" key={String(row._id)}><Link className="kr-conversation-link" href={`/kora/conversations/${row._id}`}><span className="kr-message-icon"><MessageSquare size={14}/></span><div><strong>{display(row.title)}</strong><p>{row.preview ? String(row.preview) : `${display(row.kind)} · ${display(row.status)}`}</p></div><div className="kr-conversation-meta"><span>{display(id ? folder?.name : row.folder_id)}</span><small>{dateLabel(row.lastMessageAt ?? row.updatedAt)}</small></div></Link><DropdownMenu><DropdownMenuTrigger asChild><button className="nv-button kr-small-button" aria-label={`Options for ${row.title}`}><MoreHorizontal size={15}/></button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link href={`/kora/conversations/${row._id}`}>Open conversation</Link></DropdownMenuItem><div className="kr-move-menu"><MoveConversation id={String(row._id)} folders={rowsOf(folders.data?.data)} current={id ?? linkedId(row.folder_id)}/></div></DropdownMenuContent></DropdownMenu></div>)}</div>{!conversations.length && <Empty title={search ? "No matching conversations" : "No conversations yet"}/>} {!id && <KoraPagination result={recent.data} page={page} onChange={setPage}/>}</section>}
+    {form && (!id || folder) && <KoraFolderDialog key={`form-${id ?? "new"}`} folder={folder} open onOpenChange={open => { if (!open) router.push(id ? `/kora/folders/${id}` : "/kora/folders"); }}/>}</div>;
+}
+export function KoraRecentConversations({ onNavigate }: { onNavigate: () => void }) {
+  const path = usePathname();
+  const query = useQuery({ queryKey: ["novya", "kora", "conversations", "sidebar"], queryFn: () => novya.get("/kora/conversations", { limit: 5 }), staleTime: 30000 });
+  return <div className="nv-kora-recent"><div><span>Recent conversations</span><Link href="/kora/history" onClick={onNavigate}>View all</Link></div>{rowsOf(query.data?.data).map(row => <Link className={path === `/kora/conversations/${row._id}` ? "kr-recent-active" : ""} key={String(row._id)} href={`/kora/conversations/${row._id}`} onClick={onNavigate}><MessageSquare size={12}/><span>{display(row.title)}<small>{dateLabel(row.lastMessageAt, true)}</small></span></Link>)}{query.isSuccess && !rowsOf(query.data?.data).length && <p>No recent conversations</p>}{query.error && <p>Recent conversations unavailable</p>}</div>;
+}

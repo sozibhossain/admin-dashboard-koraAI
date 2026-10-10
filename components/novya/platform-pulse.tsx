@@ -1,0 +1,12 @@
+﻿"use client";
+import { useState } from "react";
+import { AreaChart,Area,ResponsiveContainer,CartesianGrid,XAxis,YAxis,Tooltip } from "recharts";
+import { rowsOf } from "@/lib/novya";
+import { Panel,Empty } from "./primitives";
+export function PlatformPulse({samples}:{samples:unknown}){
+ const [metric,setMetric]=useState<"latencyMs"|"errorRate">("latencyMs");const grouped=new Map<string,{at:string;sum:number;count:number}>();
+ for(const sample of rowsOf(samples)){const value=Number(sample[metric]);const date=new Date(String(sample.at));if(!Number.isFinite(value)||!Number.isFinite(date.getTime()))continue;const key=date.toISOString().slice(0,16);const group=grouped.get(key)??{at:key,sum:0,count:0};group.sum+=value;group.count++;grouped.set(key,group);}
+ const data=Array.from(grouped.values()).sort((a,b)=>a.at.localeCompare(b.at)).map(g=>({time:new Date(g.at+":00Z").toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),value:Math.round(g.sum/g.count*100)/100}));
+ return <Panel title="Platform Pulse" subtitle="Last 60 minutes · Average recorded service measurements" action={<div className="nv-heading-actions"><button className={`nv-button ${metric==="latencyMs"?"nv-button-primary":""}`} onClick={()=>setMetric("latencyMs")}>Latency</button><button className={`nv-button ${metric==="errorRate"?"nv-button-primary":""}`} onClick={()=>setMetric("errorRate")}>Errors</button></div>}>{data.length?<div style={{height:230}}><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{left:0,right:8,top:10,bottom:0}}><defs><linearGradient id="nv-pulse-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6eb5ef" stopOpacity={.4}/><stop offset="100%" stopColor="#6eb5ef" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#23313e" vertical={false}/><XAxis dataKey="time" tick={{fill:"#7990a6",fontSize:9}} axisLine={false} tickLine={false}/><YAxis tick={{fill:"#7990a6",fontSize:9}} axisLine={false} tickLine={false} unit={metric==="latencyMs"?"ms":"%"} width={45}/><Tooltip contentStyle={{background:"#101c29",border:"1px solid #34495e",borderRadius:8,fontSize:11}}/><Area dataKey="value" name={metric==="latencyMs"?"Average latency":"Average error rate"} type="linear" stroke="#74b9f1" fill="url(#nv-pulse-fill)" strokeWidth={2} isAnimationActive={false}/></AreaChart></ResponsiveContainer></div>:<Empty title="No recent measurements" description="Recorded service checks will appear here. No generated telemetry is shown."/>}</Panel>;
+}
+

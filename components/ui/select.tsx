@@ -15,7 +15,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-lg border border-[#2a3547] bg-[#0d1526] px-3 py-2 text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
+      "nv-select-trigger flex h-10 w-full items-center justify-between rounded-lg border border-[#2a3547] bg-[#0d1526] px-3 py-2 text-sm text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50",
       className
     )}
     {...props}
@@ -35,14 +35,16 @@ const SelectContent = React.forwardRef<
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
+      sideOffset={6}
+      collisionPadding={12}
       className={cn(
-        "relative z-50 min-w-[8rem] overflow-hidden rounded-lg border border-[#2a3547] bg-[#0d1a2d] text-gray-200 shadow-lg",
+        "nv-menu-panel nv-select-panel relative z-50 min-w-[8rem] overflow-hidden rounded-lg border border-[#2a3547] bg-[#0d1a2d] text-gray-200 shadow-lg",
         className
       )}
       position={position}
       {...props}
     >
-      <SelectPrimitive.Viewport className="p-1">{children}</SelectPrimitive.Viewport>
+      <SelectPrimitive.Viewport className="nv-menu-viewport p-1">{children}</SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ));
@@ -55,7 +57,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-[#1e2d40] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "nv-menu-item relative flex w-full cursor-default select-none items-center rounded-md py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-[#1e2d40] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}

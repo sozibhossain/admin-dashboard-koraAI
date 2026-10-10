@@ -1,0 +1,7 @@
+"use client";
+import { RecordData,rowsOf } from "@/lib/novya";
+import { Panel } from "./primitives";
+import { FormField } from "./resource";
+const entries:Record<string,RecordData>={contacts:{label:"",name:"",email:"",phone:""},alertPolicy:{key:"",label:"",severity:"warning",channels:["email"],enabled:true},retention:{kind:"",days:365},modelRoutes:{workload:"",route:"",model:"",region:"EU",status:"healthy",fallbackModel:""},featureFlags:{key:"",label:"",enabled:false,rolloutPercent:0,environment:"development"}};
+export function isStructuredArray(key:string){return key in entries;}
+export function SettingsArray({name,value,onChange}:{name:string;value:unknown;onChange:(rows:RecordData[])=>void}){const rows=rowsOf(value);return <div><h3 className="text-xs font-medium capitalize mb-3">{name.replace(/([A-Z])/g," $1")}</h3>{rows.map((row,i)=><Panel key={i} className="mb-3"><div className="nv-form-grid">{Object.entries({...entries[name],...row}).filter(([key])=>key!=="_id").map(([key,v])=><FormField key={key} field={{key,label:key.replace(/([A-Z])/g," $1"),type:typeof v==="boolean"?"boolean":typeof v==="number"?"number":Array.isArray(v)?"lines":"text"}} value={v} onChange={next=>onChange(rows.map((r,j)=>j===i?{...r,[key]:next}:r))}/>)}</div><button type="button" className="nv-button mt-3" onClick={()=>onChange(rows.filter((_,j)=>i!==j))}>Remove entry</button></Panel>)}<button type="button" className="nv-button" onClick={()=>onChange([...rows,{...entries[name]}])}>Add entry</button></div>;}

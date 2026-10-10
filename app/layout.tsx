@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./management.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "KoraAI - Admin Dashboard",
-  description: "KoraAI Admin Dashboard",
+  title: "NOVYA — Admin Dashboard",
+  description: "NOVYA platform administration",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

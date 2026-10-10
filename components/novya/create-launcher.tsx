@@ -1,0 +1,10 @@
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import * as Popover from "@radix-ui/react-popover";
+import { Plus, Sparkles, MessageSquare, ChevronRight } from "lucide-react";
+export function CreateLauncher({ ask }: { ask: (mode: "voice" | "chat") => void }) {
+  const [open, setOpen] = useState(false), [create, setCreate] = useState(false);
+  const close = () => { setOpen(false); setCreate(false); };
+  return <Popover.Root open={open} onOpenChange={value => { setOpen(value); if (!value) setCreate(false); }}><Popover.Trigger asChild><button className="nv-icon-button" aria-label="Create or ask Kora"><Plus size={18}/></button></Popover.Trigger><Popover.Portal><Popover.Content sideOffset={12} align="end" className="nv-create-popover" aria-label="Create or ask Kora"><button onClick={() => { close(); ask("voice"); }}><span className="nv-launcher-icon"><Sparkles size={16}/></span><span><strong>Ask Kora</strong><small>Speak to Kora or type your question.</small></span><ChevronRight size={13}/></button><button onClick={() => { close(); ask("chat"); }}><span className="nv-launcher-icon"><MessageSquare size={16}/></span><span><strong>Chat</strong><small>Open the Kora conversation drawer.</small></span><ChevronRight size={13}/></button><button aria-expanded={create} onClick={() => setCreate(!create)}><span className="nv-launcher-icon"><Plus size={16}/></span><span><strong>Create</strong><small>Create work across NOVYA.</small></span><ChevronRight size={13}/></button>{create && <div className="nv-create-choices">{[["Create task", "/tasks/create"], ["Request approval", "/approvals/create"], ["Add organization", "/management/organizations/create"], ["Invite team member", "/team/members/create"], ["Create event", "/calendar?create=true"], ["Run workflow", "/workflows"]].map(([label, href]) => <Link key={href} href={href} onClick={close}>{label}<ChevronRight size={13}/></Link>)}</div>}<Popover.Close className="nv-button mt-2">Close</Popover.Close></Popover.Content></Popover.Portal></Popover.Root>;
+}

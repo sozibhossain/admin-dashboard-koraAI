@@ -1,0 +1,13 @@
+"use client";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { novya, rowsOf, display, errorMessage } from "@/lib/novya";
+import { PageHeading, Panel, Metric, QueryState, DataTable, Empty } from "./primitives";
+import { resources } from "@/lib/novya-pages";
+export function LiveChannelPage({channel}:{channel:string}){
+  const detail=useQuery({queryKey:["novya","live","channel",channel],queryFn:()=>novya.get(`/live/channels/${channel}`),refetchInterval:15000});
+  const summary=useQuery({queryKey:["novya","live","channels","summary"],queryFn:()=>novya.get("/live/channels"),refetchInterval:15000});
+  const metrics=rowsOf(summary.data?.data.channels).find(row=>row.channel===channel),daily=rowsOf(detail.data?.data.daily);
+  return <><PageHeading title={`${display(channel)} · Channel Detail`} subtitle="Recorded channel activity, conversations and handoffs." action={<Link className="nv-button" href="/live-view/channels">All channels</Link>}/><QueryState loading={detail.isPending||summary.isPending} error={detail.error||summary.error?errorMessage(detail.error||summary.error):undefined} retry={()=>{detail.refetch();summary.refetch();}}/>{detail.data&&<><div className="nv-metrics"><Metric label="Conversations · current month" value={display(metrics?.sessions)}/><Metric label="Active now" value={display(metrics?.active)}/><Metric label="Failure rate · current month" value={metrics?.failureRatePct!=null?`${display(metrics.failureRatePct)}%`:"—"}/><Metric label="Human handoff · current month" value={metrics?.humanHandoffPct!=null?`${display(metrics.humanHandoffPct)}%`:"—"}/></div><Panel title="Conversation activity" subtitle="Recorded sessions in the last 14 days">{daily.length?<div className="h-56"><ResponsiveContainer width="100%" height="100%"><BarChart data={daily}><XAxis dataKey="_id" tick={{fill:"#94a3b8",fontSize:10}}/><YAxis allowDecimals={false} tick={{fill:"#94a3b8",fontSize:10}}/><Tooltip contentStyle={{background:"#10161d",border:"1px solid #232c35",color:"#e2e8f0"}}/><Bar dataKey="n" name="Conversations" fill="#77a5df" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer></div>:<Empty title="No channel activity recorded"/>}</Panel><Panel title="Recent conversations" subtitle="The 20 most recent recorded sessions" className="mt-5"><DataTable rows={rowsOf(detail.data.data.recent)} columns={resources["live-view/conversations"].columns} href={row=>`/live-view/conversations/${row._id}`}/></Panel><div className="nv-data-source">Source: live sessions · Updated {new Date(detail.dataUpdatedAt).toLocaleTimeString()}</div></>}</>;
+}

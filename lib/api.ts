@@ -1,4 +1,4 @@
-import api from "./axios";
+﻿import api from "./axios";
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
 export const authApi = {
@@ -175,22 +175,22 @@ export const supportApi = {
 
 // ─── Inbox ────────────────────────────────────────────────────────────────────
 export const inboxApi = {
-  getChats: (params?: object) => api.get("/inbox", { params }),
-  getChatById: (id: string) => api.get(`/inbox/${id}`),
-  search: (q: string) => api.get("/inbox/search", { params: { q } }),
-  createGroup: (data: object) => api.post("/inbox/group", data),
-  markRead: (id: string) => api.patch(`/inbox/${id}/read`),
+  getChats: (params?: object) => api.get("/novya/inbox", { params }),
+  getChatById: (id: string) => api.get(`/novya/inbox/${id}`),
+  search: (q: string) => api.get("/novya/inbox/search", { params: { q } }),
+  createGroup: (data: object) => api.post("/novya/inbox/group", data),
+  markRead: (id: string) => api.patch(`/novya/inbox/${id}/read`),
   sendMessage: (data: FormData | { recipientId: string; content?: string }) =>
     data instanceof FormData
-      ? api.post("/inbox", data, { headers: { "Content-Type": "multipart/form-data" } })
-      : api.post("/inbox", data),
+      ? api.post("/novya/inbox", data, { headers: { "Content-Type": "multipart/form-data" } })
+      : api.post("/novya/inbox", data),
   deleteMessage: (conversationId: string, messageId: string) =>
-    api.delete(`/inbox/${conversationId}/messages/${messageId}`),
+    api.delete(`/novya/inbox/${conversationId}/messages/${messageId}`),
   editMessage: (conversationId: string, messageId: string, data: { content: string }) =>
-    api.patch(`/inbox/${conversationId}/messages/${messageId}`, data),
-  deleteChat: (id: string) => api.delete(`/inbox/${id}`),
+    api.patch(`/novya/inbox/${conversationId}/messages/${messageId}`, data),
+  deleteChat: (id: string) => api.delete(`/novya/inbox/${id}`),
   getRecipients: (params?: { q?: string }) =>
-    api.get("/inbox/recipients", { params }),
+    api.get("/novya/inbox/recipients", { params }),
 };
 
 export const mailApi = {

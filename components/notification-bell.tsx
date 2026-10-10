@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import * as Popover from "@radix-ui/react-popover";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, CheckCheck, Mail } from "lucide-react";
@@ -25,26 +26,6 @@ const TYPE_ICON: Record<string, string> = {
 export function NotificationBell() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // Close when clicking outside the popover.
-  useEffect(() => {
-    if (!isOpen) return;
-    const onClick = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onEscape);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onEscape);
-    };
-  }, [isOpen]);
 
   const { data: countResponse } = useQuery({
     queryKey: ["notifications-unread-count"],
@@ -106,12 +87,12 @@ export function NotificationBell() {
   const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+      <Popover.Trigger asChild>
       <Button
         variant="ghost"
         size="icon"
         className="relative"
-        onClick={() => setIsOpen((value) => !value)}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
         <Bell className="h-4 w-4" />
@@ -121,9 +102,9 @@ export function NotificationBell() {
           </span>
         ) : null}
       </Button>
-
-      {isOpen ? (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-[#1e2d40] bg-[#0a1628] shadow-2xl sm:w-96">
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content align="end" sideOffset={10} collisionPadding={12} className="nv-menu-panel nv-notification-panel" aria-label="Notifications">
           <div className="flex items-center justify-between border-b border-[#1e2d40] px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-gray-100">Notifications</p>
@@ -241,8 +222,8 @@ export function NotificationBell() {
               })
             )}
           </div>
-        </div>
-      ) : null}
-    </div>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

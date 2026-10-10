@@ -1,0 +1,13 @@
+"use client";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Share2 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { novya, rowsOf, display, errorMessage } from "@/lib/novya";
+import { SearchField, QueryState, Empty } from "./primitives";
+export function KoraShareDialog({ id }: { id: string }) {
+  const [open, setOpen] = useState(false), [search, setSearch] = useState(""), [selected, setSelected] = useState<string[]>([]), cache = useQueryClient();
+  const targets = useQuery({ queryKey: ["novya", "kora", "share-targets", search], queryFn: () => novya.get("/kora/share-targets", { q: search }), enabled: open });
+  const share = useMutation({ mutationFn: () => novya.post(`/kora/conversations/${id}/share`, { user_ids: selected }), onSuccess: () => { cache.invalidateQueries({ queryKey: ["novya", "kora"] }); setOpen(false); setSelected([]); } });
+  return <><button className="nv-button" onClick={() => { share.reset(); setOpen(true); }}><Share2 size={13}/>Share</button><Dialog open={open} onOpenChange={setOpen}><DialogContent className="nv-dialog kr-dialog kr-folder-dialog"><DialogTitle>Share conversation</DialogTitle><DialogDescription>Selected platform administrators can view this conversation. Their Kora permissions still apply.</DialogDescription><SearchField value={search} onChange={setSearch} placeholder="Search administrators"/><QueryState loading={targets.isPending} error={targets.error ? errorMessage(targets.error) : undefined} retry={() => targets.refetch()}/><div className="kr-share-targets">{rowsOf(targets.data?.data).map(user => <label className="nv-list-item" key={String(user._id)}><input type="checkbox" checked={selected.includes(String(user._id))} onChange={event => setSelected(values => event.target.checked ? [...values, String(user._id)] : values.filter(value => value !== String(user._id)))}/><span><strong>{display(user.name)}</strong><small>{display(user.email)}</small></span></label>)}</div>{targets.isSuccess && !rowsOf(targets.data?.data).length && <Empty title="No matching administrators"/>}{share.error && <p className="nv-error-text" role="alert">{errorMessage(share.error)}</p>}<div className="nv-form-footer"><button type="button" className="nv-button" onClick={() => setOpen(false)}>Cancel</button><button className="nv-button nv-button-primary" disabled={!selected.length || share.isPending} onClick={() => share.mutate()}>{share.isPending ? "Sharing…" : `Share with ${selected.length} selected`}</button></div></DialogContent></Dialog></>;
+}

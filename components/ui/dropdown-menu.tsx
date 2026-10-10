@@ -1,7 +1,6 @@
 "use client";
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { Check, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -19,7 +18,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[8rem] overflow-hidden rounded-xl border border-[#1e2d40] bg-[#0d1a2d] p-1 text-gray-200 shadow-lg",
+        "nv-menu-panel z-50 min-w-[8rem] overflow-hidden rounded-xl border border-[#1e2d40] bg-[#0d1a2d] p-1 text-gray-200 shadow-lg",
         className
       )}
       {...props}
@@ -35,7 +34,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors focus:bg-[#1e2d40] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "nv-menu-item relative flex cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors focus:bg-[#1e2d40] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       inset && "pl-8",
       className
     )}
@@ -62,7 +61,7 @@ const DropdownMenuLabel = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-xs font-semibold text-gray-500", inset && "pl-8", className)}
+    className={cn("nv-menu-label px-2 py-1.5 text-xs font-semibold text-gray-500", inset && "pl-8", className)}
     {...props}
   />
 ));

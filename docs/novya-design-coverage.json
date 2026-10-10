@@ -1,0 +1,758 @@
+[
+  {
+    "reference": 1,
+    "name": "Command Center",
+    "route": "/dashboard",
+    "state": "page"
+  },
+  {
+    "reference": 2,
+    "name": "Kora new chat",
+    "route": "/kora",
+    "state": "page"
+  },
+  {
+    "reference": 3,
+    "name": "Kora working conversation",
+    "route": "/kora/conversations/:id",
+    "state": "working"
+  },
+  {
+    "reference": 4,
+    "name": "Kora action preview",
+    "route": "/kora/conversations/:id",
+    "state": "action preview"
+  },
+  {
+    "reference": 5,
+    "name": "Kora action result",
+    "route": "/kora/conversations/:id",
+    "state": "action result"
+  },
+  {
+    "reference": 6,
+    "name": "Folders",
+    "route": "/kora/folders",
+    "state": "page"
+  },
+  {
+    "reference": 7,
+    "name": "Conversation context",
+    "route": "/kora/conversations/:id",
+    "state": "page"
+  },
+  {
+    "reference": 8,
+    "name": "Folder detail",
+    "route": "/kora/folders/:id",
+    "state": "page"
+  },
+  {
+    "reference": 9,
+    "name": "Create folder",
+    "route": "/kora/folders/create",
+    "state": "modal"
+  },
+  {
+    "reference": 10,
+    "name": "Move conversation",
+    "route": "/kora/conversations/:id",
+    "state": "folder selector"
+  },
+  {
+    "reference": 11,
+    "name": "Investigations",
+    "route": "/kora/investigations",
+    "state": "page"
+  },
+  {
+    "reference": 12,
+    "name": "Investigation detail",
+    "route": "/kora/investigations/:id",
+    "state": "page"
+  },
+  {
+    "reference": 13,
+    "name": "Cases",
+    "route": "/kora/cases",
+    "state": "page"
+  },
+  {
+    "reference": 14,
+    "name": "Actions",
+    "route": "/kora/actions",
+    "state": "page"
+  },
+  {
+    "reference": 15,
+    "name": "Kora Brain",
+    "route": "/kora/brain",
+    "state": "page"
+  },
+  {
+    "reference": 16,
+    "name": "Knowledge",
+    "route": "/kora/knowledge",
+    "state": "page"
+  },
+  {
+    "reference": 17,
+    "name": "Knowledge detail",
+    "route": "/kora/knowledge/:id",
+    "state": "page"
+  },
+  {
+    "reference": 18,
+    "name": "Add knowledge",
+    "route": "/kora/knowledge/create",
+    "state": "drawer"
+  },
+  {
+    "reference": 19,
+    "name": "Import source",
+    "route": "/kora/sources",
+    "state": "page"
+  },
+  {
+    "reference": 20,
+    "name": "History",
+    "route": "/kora/history",
+    "state": "page"
+  },
+  {
+    "reference": 21,
+    "name": "Live overview",
+    "route": "/live-view",
+    "state": "page"
+  },
+  {
+    "reference": 22,
+    "name": "All conversations",
+    "route": "/live-view/conversations",
+    "state": "page"
+  },
+  {
+    "reference": 23,
+    "name": "Conversation detail",
+    "route": "/live-view/conversations/:id",
+    "state": "page"
+  },
+  {
+    "reference": 24,
+    "name": "Channel overview",
+    "route": "/live-view/channels",
+    "state": "page"
+  },
+  {
+    "reference": 25,
+    "name": "Channel detail",
+    "route": "/live-view/channels/whatsapp",
+    "state": "page"
+  },
+  {
+    "reference": 26,
+    "name": "Live call",
+    "route": "/live-view/conversations/:id",
+    "state": "call"
+  },
+  {
+    "reference": 27,
+    "name": "Intervention",
+    "route": "/live-view/conversations/:id",
+    "state": "review and confirm"
+  },
+  {
+    "reference": 28,
+    "name": "Organization locations",
+    "route": "/live-view/organizations/:id",
+    "state": "page"
+  },
+  {
+    "reference": 29,
+    "name": "Approvals overview",
+    "route": "/approvals",
+    "state": "page"
+  },
+  {
+    "reference": 30,
+    "name": "All approvals",
+    "route": "/approvals/all",
+    "state": "page"
+  },
+  {
+    "reference": 31,
+    "name": "Approval detail",
+    "route": "/approvals/:id",
+    "state": "page"
+  },
+  {
+    "reference": 32,
+    "name": "Create approval",
+    "route": "/approvals/create",
+    "state": "page"
+  },
+  {
+    "reference": 33,
+    "name": "Approval result",
+    "route": "/approvals/:id",
+    "state": "execution result"
+  },
+  {
+    "reference": 34,
+    "name": "Create launcher",
+    "route": "/approvals",
+    "state": "plus launcher"
+  },
+  {
+    "reference": 35,
+    "name": "Ask Kora voice",
+    "route": "/approvals",
+    "state": "voice dialog"
+  },
+  {
+    "reference": 36,
+    "name": "Chat Kora",
+    "route": "/approvals",
+    "state": "chat drawer"
+  },
+  {
+    "reference": 37,
+    "name": "My tasks",
+    "route": "/tasks",
+    "state": "page"
+  },
+  {
+    "reference": 38,
+    "name": "Task detail",
+    "route": "/tasks/:id",
+    "state": "page"
+  },
+  {
+    "reference": 39,
+    "name": "Create and assign",
+    "route": "/tasks/create",
+    "state": "page"
+  },
+  {
+    "reference": 40,
+    "name": "Team tasks",
+    "route": "/tasks/team",
+    "state": "page"
+  },
+  {
+    "reference": 41,
+    "name": "Team day detail",
+    "route": "/tasks/team",
+    "state": "day selection"
+  },
+  {
+    "reference": 42,
+    "name": "Internal chat",
+    "route": "/inbox",
+    "state": "chat tab"
+  },
+  {
+    "reference": 43,
+    "name": "Email",
+    "route": "/inbox",
+    "state": "email tab"
+  },
+  {
+    "reference": 44,
+    "name": "Calendar week",
+    "route": "/calendar",
+    "state": "page"
+  },
+  {
+    "reference": 45,
+    "name": "Create launcher",
+    "route": "/calendar",
+    "state": "plus launcher"
+  },
+  {
+    "reference": 46,
+    "name": "Ask Kora voice",
+    "route": "/calendar",
+    "state": "voice dialog"
+  },
+  {
+    "reference": 47,
+    "name": "Chat Kora",
+    "route": "/calendar",
+    "state": "chat drawer"
+  },
+  {
+    "reference": 48,
+    "name": "Management overview",
+    "route": "/management",
+    "state": "page"
+  },
+  {
+    "reference": 49,
+    "name": "Organizations",
+    "route": "/management/organizations",
+    "state": "page"
+  },
+  {
+    "reference": 50,
+    "name": "Organization record",
+    "route": "/management/organizations/:id",
+    "state": "page"
+  },
+  {
+    "reference": 51,
+    "name": "Create organization",
+    "route": "/management/organizations/create",
+    "state": "five steps"
+  },
+  {
+    "reference": 52,
+    "name": "Edit organization",
+    "route": "/management/organizations/:id/edit",
+    "state": "page"
+  },
+  {
+    "reference": 53,
+    "name": "Organization members",
+    "route": "/management/organizations/:id/members",
+    "state": "page"
+  },
+  {
+    "reference": 54,
+    "name": "Organization billing",
+    "route": "/management/organizations/:id/plan-billing",
+    "state": "page"
+  },
+  {
+    "reference": 55,
+    "name": "Organization integrations",
+    "route": "/management/organizations/:id/integrations",
+    "state": "page"
+  },
+  {
+    "reference": 56,
+    "name": "Organization health",
+    "route": "/management/organizations/:id/health",
+    "state": "page"
+  },
+  {
+    "reference": 57,
+    "name": "Organization contracts",
+    "route": "/management/organizations/:id/contracts",
+    "state": "page"
+  },
+  {
+    "reference": 58,
+    "name": "Customers",
+    "route": "/management/customers",
+    "state": "page"
+  },
+  {
+    "reference": 59,
+    "name": "Customer record",
+    "route": "/management/customers/:id",
+    "state": "page"
+  },
+  {
+    "reference": 60,
+    "name": "Add customer",
+    "route": "/management/customers/create",
+    "state": "modal"
+  },
+  {
+    "reference": 61,
+    "name": "Customer appointments",
+    "route": "/management/customers/:id/appointments",
+    "state": "page"
+  },
+  {
+    "reference": 62,
+    "name": "Customer documents",
+    "route": "/management/customers/:id/documents",
+    "state": "page"
+  },
+  {
+    "reference": 63,
+    "name": "Customer payments",
+    "route": "/management/customers/:id/payments",
+    "state": "page"
+  },
+  {
+    "reference": 64,
+    "name": "Customer notes",
+    "route": "/management/customers/:id/notes",
+    "state": "page"
+  },
+  {
+    "reference": 65,
+    "name": "Edit customer",
+    "route": "/management/customers/:id/edit",
+    "state": "modal"
+  },
+  {
+    "reference": 66,
+    "name": "Health and risk",
+    "route": "/management/health-risk",
+    "state": "page"
+  },
+  {
+    "reference": 67,
+    "name": "Plans and billing",
+    "route": "/management/plans-billing",
+    "state": "page"
+  },
+  {
+    "reference": 68,
+    "name": "Management activity",
+    "route": "/management/activity",
+    "state": "page"
+  },
+  {
+    "reference": 69,
+    "name": "Team overview",
+    "route": "/team",
+    "state": "page"
+  },
+  {
+    "reference": 70,
+    "name": "Members",
+    "route": "/team/members",
+    "state": "page"
+  },
+  {
+    "reference": 71,
+    "name": "Member record",
+    "route": "/team/members/:id",
+    "state": "page"
+  },
+  {
+    "reference": 72,
+    "name": "Employment",
+    "route": "/team/members/:id/employment",
+    "state": "page"
+  },
+  {
+    "reference": 73,
+    "name": "Team and role",
+    "route": "/team/members/:id/team-role",
+    "state": "page"
+  },
+  {
+    "reference": 74,
+    "name": "Member access",
+    "route": "/team/members/:id/access",
+    "state": "page"
+  },
+  {
+    "reference": 75,
+    "name": "Member absence",
+    "route": "/team/members/:id/time-absence",
+    "state": "page"
+  },
+  {
+    "reference": 76,
+    "name": "Member performance",
+    "route": "/team/members/:id/performance",
+    "state": "page"
+  },
+  {
+    "reference": 77,
+    "name": "Compensation",
+    "route": "/team/members/:id/compensation",
+    "state": "page"
+  },
+  {
+    "reference": 78,
+    "name": "Member documents",
+    "route": "/team/members/:id/documents",
+    "state": "page"
+  },
+  {
+    "reference": 79,
+    "name": "Member activity",
+    "route": "/team/members/:id/activity",
+    "state": "page"
+  },
+  {
+    "reference": 80,
+    "name": "Invite member",
+    "route": "/team/members/create",
+    "state": "modal"
+  },
+  {
+    "reference": 81,
+    "name": "Departments",
+    "route": "/team/departments",
+    "state": "page"
+  },
+  {
+    "reference": 82,
+    "name": "Department detail",
+    "route": "/team/departments/:id",
+    "state": "page"
+  },
+  {
+    "reference": 83,
+    "name": "Recruiting",
+    "route": "/team/recruiting",
+    "state": "page"
+  },
+  {
+    "reference": 84,
+    "name": "Candidate detail",
+    "route": "/team/candidates/:id",
+    "state": "page"
+  },
+  {
+    "reference": 85,
+    "name": "On and offboarding",
+    "route": "/team/onboarding",
+    "state": "page"
+  },
+  {
+    "reference": 86,
+    "name": "Lifecycle journey",
+    "route": "/team/onboarding/:id",
+    "state": "page"
+  },
+  {
+    "reference": 87,
+    "name": "Time and absence",
+    "route": "/team/time-absence",
+    "state": "page"
+  },
+  {
+    "reference": 88,
+    "name": "Record absence",
+    "route": "/team/time-absence/create",
+    "state": "modal"
+  },
+  {
+    "reference": 89,
+    "name": "Performance",
+    "route": "/team/performance",
+    "state": "page"
+  },
+  {
+    "reference": 90,
+    "name": "Performance review",
+    "route": "/team/performance/:id",
+    "state": "page"
+  },
+  {
+    "reference": 91,
+    "name": "Roles and access",
+    "route": "/team/roles",
+    "state": "page"
+  },
+  {
+    "reference": 92,
+    "name": "Role detail",
+    "route": "/team/roles/:id",
+    "state": "page"
+  },
+  {
+    "reference": 93,
+    "name": "System health",
+    "route": "/system-health",
+    "state": "page"
+  },
+  {
+    "reference": 94,
+    "name": "Workflow library",
+    "route": "/workflows",
+    "state": "page"
+  },
+  {
+    "reference": 95,
+    "name": "Workflow runner",
+    "route": "/workflows/suspend_organization",
+    "state": "details and impact"
+  },
+  {
+    "reference": 96,
+    "name": "Workflow result",
+    "route": "/workflows/runs/:id",
+    "state": "execution result"
+  },
+  {
+    "reference": 310,
+    "name": "Settings overview",
+    "route": "/settings",
+    "state": "page"
+  },
+  {
+    "reference": 311,
+    "name": "General",
+    "route": "/settings/general",
+    "state": "page"
+  },
+  {
+    "reference": 312,
+    "name": "Platform defaults",
+    "route": "/settings/general/defaults",
+    "state": "page"
+  },
+  {
+    "reference": 313,
+    "name": "Company",
+    "route": "/settings/company",
+    "state": "page"
+  },
+  {
+    "reference": 314,
+    "name": "Legal and contacts",
+    "route": "/settings/company/legal-contacts",
+    "state": "page"
+  },
+  {
+    "reference": 315,
+    "name": "Branding and domains",
+    "route": "/settings/branding",
+    "state": "page"
+  },
+  {
+    "reference": 316,
+    "name": "Brand identity",
+    "route": "/settings/branding/identity",
+    "state": "page"
+  },
+  {
+    "reference": 317,
+    "name": "Domain verification",
+    "route": "/settings/branding/domains",
+    "state": "page"
+  },
+  {
+    "reference": 318,
+    "name": "Roles and access",
+    "route": "/settings/roles",
+    "state": "page"
+  },
+  {
+    "reference": 319,
+    "name": "Permission policy",
+    "route": "/settings/roles/policies",
+    "state": "page"
+  },
+  {
+    "reference": 320,
+    "name": "Platform security",
+    "route": "/settings/security",
+    "state": "page"
+  },
+  {
+    "reference": 321,
+    "name": "Authentication and SSO",
+    "route": "/settings/security/authentication",
+    "state": "page"
+  },
+  {
+    "reference": 322,
+    "name": "Emergency and network access",
+    "route": "/settings/security/emergency",
+    "state": "page"
+  },
+  {
+    "reference": 323,
+    "name": "Notifications",
+    "route": "/settings/notifications",
+    "state": "page"
+  },
+  {
+    "reference": 324,
+    "name": "Alert policy",
+    "route": "/settings/notifications/alert-policy",
+    "state": "page"
+  },
+  {
+    "reference": 325,
+    "name": "Integrations and API",
+    "route": "/settings/integrations",
+    "state": "page"
+  },
+  {
+    "reference": 326,
+    "name": "Provider detail",
+    "route": "/settings/integrations/:provider",
+    "state": "page"
+  },
+  {
+    "reference": 327,
+    "name": "API keys and webhooks",
+    "route": "/settings/integrations/api-keys",
+    "state": "page"
+  },
+  {
+    "reference": 328,
+    "name": "Create API key",
+    "route": "/settings/integrations/api-keys/create",
+    "state": "page"
+  },
+  {
+    "reference": 329,
+    "name": "Kora defaults",
+    "route": "/settings/kora",
+    "state": "page"
+  },
+  {
+    "reference": 330,
+    "name": "Model routing and budgets",
+    "route": "/settings/kora/routing",
+    "state": "page"
+  },
+  {
+    "reference": 331,
+    "name": "Approval and data policy",
+    "route": "/settings/kora/approval-policy",
+    "state": "page"
+  },
+  {
+    "reference": 332,
+    "name": "Data and privacy",
+    "route": "/settings/data",
+    "state": "page"
+  },
+  {
+    "reference": 333,
+    "name": "Retention and residency",
+    "route": "/settings/data/retention",
+    "state": "page"
+  },
+  {
+    "reference": 334,
+    "name": "Privacy requests",
+    "route": "/settings/data/privacy-requests",
+    "state": "page"
+  },
+  {
+    "reference": 335,
+    "name": "Audit and compliance",
+    "route": "/settings/audit",
+    "state": "page"
+  },
+  {
+    "reference": 336,
+    "name": "Configuration changes",
+    "route": "/settings/audit/changes",
+    "state": "page"
+  },
+  {
+    "reference": 337,
+    "name": "Advanced",
+    "route": "/settings/advanced",
+    "state": "page"
+  },
+  {
+    "reference": 338,
+    "name": "Plans and feature access",
+    "route": "/settings/advanced/plans",
+    "state": "page"
+  },
+  {
+    "reference": 339,
+    "name": "Feature flags and rollouts",
+    "route": "/settings/advanced/feature-flags",
+    "state": "page"
+  }
+]

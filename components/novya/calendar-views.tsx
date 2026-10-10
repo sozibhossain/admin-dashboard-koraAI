@@ -1,0 +1,15 @@
+"use client";
+import { RecordData, display } from "@/lib/novya";
+export type CalendarView = "day" | "week" | "month";
+export const addCalendarDays = (date: Date, amount: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
+export const startCalendarWeek = (date: Date) => addCalendarDays(date, -((date.getDay() + 6) % 7));
+export function CalendarGrid({ view, days, events, open, selectDay, anchor }: { view: CalendarView; days: Date[]; events: RecordData[]; open: (event: RecordData) => void; selectDay: (day: Date) => void; anchor: Date }) {
+  const overlaps = (event: RecordData, day: Date) => new Date(String(event.startsAt)) < addCalendarDays(day, 1) && new Date(String(event.endsAt)) > day;
+  const eventButton = (event: RecordData) => <button key={String(event._id)} className={`nv-calendar-event nv-calendar-${event.kind}`} onClick={() => open(event)}><strong>{display(event.title)}</strong><span>{new Date(String(event.startsAt)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></button>;
+  if (view === "month") return <div className="nv-calendar-month">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(label => <div className="nv-calendar-head" key={label}>{label}</div>)}{days.map(day => <div className={`nv-calendar-month-day ${day.getMonth() !== anchor.getMonth() ? "nv-calendar-outside" : ""}`} key={day.toISOString()}><button aria-label={`Show ${day.toLocaleDateString("en")}`} className={day.toDateString() === new Date().toDateString() ? "nv-calendar-today" : ""} onClick={() => selectDay(day)}>{day.getDate()}</button>{events.filter(event => overlaps(event, day)).map(eventButton)}</div>)}</div>;
+  return <div className={`nv-calendar-grid ${view === "day" ? "nv-calendar-day-grid" : ""}`}><div/>{days.map(day => <div className="nv-calendar-head" key={day.toISOString()}>{day.toLocaleDateString("en", { weekday: "short", day: "numeric" })}</div>)}{Array.from({ length: 24 }, (_, hour) => <div className="contents" key={hour}><div className="nv-calendar-cell">{String(hour).padStart(2, "0")}:00</div>{days.map(day => <div className="nv-calendar-cell" key={day.toISOString()}>{events.filter(event => { const start = new Date(String(event.startsAt)); return overlaps(event, day) && (start < day ? hour === 0 : start.getHours() === hour); }).map(eventButton)}</div>)}</div>)}</div>;
+}
+export function MiniCalendar({ anchor, selectDay }: { anchor: Date; selectDay: (day: Date) => void }) {
+  const first = startCalendarWeek(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+  return <div className="nv-mini-calendar">{["M", "T", "W", "T", "F", "S", "S"].map((label, index) => <span key={index}>{label}</span>)}{Array.from({ length: 42 }, (_, index) => addCalendarDays(first, index)).map(day => <button key={day.toISOString()} aria-label={`Select ${day.toLocaleDateString("en")}`} aria-pressed={day.toDateString() === anchor.toDateString()} className={day.toDateString() === anchor.toDateString() ? "nv-calendar-today" : day.getMonth() !== anchor.getMonth() ? "nv-calendar-outside" : ""} onClick={() => selectDay(day)}>{day.getDate()}</button>)}</div>;
+}

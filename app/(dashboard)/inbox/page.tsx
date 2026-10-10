@@ -7,10 +7,10 @@ export default function InboxPage() {
   return (
     <InboxWorkspace
       dashboardKey="admin"
-      subtitle="Stay connected with your sales partners and never miss what matters."
-      recipientSearchPlaceholder="Search sales partners..."
-      emptyConversationText="No conversations yet. Click + to start one with a sales partner."
-      taskHref="/workflows"
+      subtitle="Internal NOVYA conversations and email."
+      recipientSearchPlaceholder="Search team members..."
+      emptyConversationText="No internal conversations yet. Start a chat with a team member."
+      taskHref="/tasks/create"
     />
   );
 }

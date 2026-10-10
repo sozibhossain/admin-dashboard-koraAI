@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "./novya.css";
+@import "./customer.css";
+@import "./dropdown.css";
 
 :root {
   --background: #050d1a;

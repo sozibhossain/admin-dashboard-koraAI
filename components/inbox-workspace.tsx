@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { inboxApi, mailApi } from "@/lib/api";
 import { useInboxSocket } from "@/lib/socket";
-import { Header } from "@/components/layout/header";
+import { PageHeading } from "@/components/novya/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -613,11 +613,11 @@ export function InboxWorkspace({
   };
 
   const renderContactPanel = () => (
-    <div className="hidden w-72 shrink-0 flex-col space-y-3 overflow-y-auto bg-[#0a1628] p-4 xl:flex">
+    <div className="hidden w-72 shrink-0 flex-col space-y-3 overflow-y-auto bg-[#0d131a] p-4 xl:flex">
       <h3 className="text-sm font-semibold text-gray-200">Contact Details</h3>
       {recipient ? (
         <>
-          <div className="rounded-2xl border border-[#1e2d40] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="relative shrink-0">
                 <Avatar className="h-14 w-14">
@@ -643,7 +643,7 @@ export function InboxWorkspace({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#1e2d40] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
             <h4 className="mb-3 text-sm font-semibold text-gray-100">About</h4>
             <InfoRow label="Email">{recipient.email || "—"}</InfoRow>
             <InfoRow label="Phone">{recipient.phoneNumber || "—"}</InfoRow>
@@ -653,7 +653,7 @@ export function InboxWorkspace({
             </InfoRow>
           </div>
 
-          <div className="rounded-2xl border border-[#1e2d40] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-100">Shared Files</h4>
               <button
@@ -693,7 +693,7 @@ export function InboxWorkspace({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#1e2d40] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-100">Pinned Messages</h4>
               <button
@@ -733,11 +733,11 @@ export function InboxWorkspace({
 
   return (
     <div>
-      <Header title="Inbox" subtitle={subtitle} />
+      <PageHeading title="Inbox" subtitle={subtitle} />
 
       {/* Tabs row — inside content, below header */}
-      <div className="flex items-center justify-end gap-2 border-b border-[#1e2d40] bg-[#070f1c] px-4 py-2 sm:px-6">
-        <div className="flex items-center rounded-xl border border-[#1e2d40] bg-[#0a1628] p-1 gap-1">
+      <div className="flex items-center justify-end gap-2 border-b border-[#29323d] bg-[#080c10] px-4 py-2 sm:px-6">
+        <div className="flex items-center rounded-xl border border-[#29323d] bg-[#0d131a] p-1 gap-1">
           <button
             type="button"
             onClick={() => setActiveTab("chat")}
@@ -768,19 +768,19 @@ export function InboxWorkspace({
       <div className="p-3 sm:p-4 lg:p-6">
         {activeTab === "chat" ? (
           <div
-            className="flex overflow-hidden rounded-xl border border-[#1e2d40]"
-            style={{ height: "calc(100vh - 200px)", minHeight: 520 }}
+            className="flex overflow-hidden rounded-xl border border-[#29323d]"
+            style={{ height: "calc(100vh - 200px)", minHeight: 380 }}
           >
             {/* Conversations List */}
             <div
-              className={`${mobileView === "list" ? "flex" : "hidden"} w-72 shrink-0 flex-col border-r border-[#1e2d40] bg-[#0a1628] lg:flex`}
+              className={`${mobileView === "list" ? "flex" : "hidden"} w-72 shrink-0 flex-col border-r border-[#29323d] bg-[#0d131a] lg:flex`}
             >
-              <div className="border-b border-[#1e2d40] p-4">
+              <div className="border-b border-[#29323d] p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-200">Conversations</h3>
                   <button
                     onClick={() => setComposerOpen(true)}
-                    className="rounded-lg p-1 text-gray-500 hover:bg-[#1e2d40] hover:text-gray-300"
+                    className="rounded-lg p-1 text-gray-500 hover:bg-[#29323d] hover:text-gray-300"
                     aria-label="New conversation"
                   >
                     <Edit className="h-4 w-4" />
@@ -804,7 +804,7 @@ export function InboxWorkspace({
                       onClick={() => setFilterTab(tab)}
                       className={`flex-1 rounded-lg py-1.5 text-xs font-medium capitalize transition-colors ${
                         filterTab === tab
-                          ? "bg-[#1e2d40] text-white"
+                          ? "bg-[#29323d] text-white"
                           : "text-gray-500 hover:text-gray-300"
                       }`}
                     >
@@ -837,8 +837,8 @@ export function InboxWorkspace({
                           setSelectedId(String(conversation._id));
                           setMobileView("chat");
                         }}
-                        className={`flex w-full items-center gap-3 border-b border-[#1e2d40] px-4 py-3 text-left transition-colors ${
-                          isSelected ? "bg-blue-600/10" : "hover:bg-[#0d1a2d]"
+                        className={`flex w-full items-center gap-3 border-b border-[#29323d] px-4 py-3 text-left transition-colors ${
+                          isSelected ? "bg-blue-600/10" : "hover:bg-[#141c25]"
                         }`}
                       >
                         <div className="relative shrink-0">
@@ -879,16 +879,16 @@ export function InboxWorkspace({
 
             {/* Chat View */}
             <div
-              className={`${mobileView === "chat" ? "flex" : "hidden"} min-w-0 flex-1 flex-col border-r border-[#1e2d40] bg-[#070f1c] lg:flex`}
+              className={`${mobileView === "chat" ? "flex" : "hidden"} min-w-0 flex-1 flex-col border-r border-[#29323d] bg-[#080c10] lg:flex`}
             >
-              <div className="flex items-center justify-between border-b border-[#1e2d40] px-4 py-3">
+              <div className="flex items-center justify-between border-b border-[#29323d] px-4 py-3">
                 {selectedConversation ? (
                   <>
                     <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => setMobileView("list")}
-                        className="-ml-1 rounded-lg p-1.5 text-gray-300 hover:bg-[#1e2d40] lg:hidden"
+                        className="-ml-1 rounded-lg p-1.5 text-gray-300 hover:bg-[#29323d] lg:hidden"
                         aria-label="Back"
                       >
                         <ChevronLeft className="h-5 w-5" />
@@ -903,7 +903,7 @@ export function InboxWorkspace({
                             </AvatarFallback>
                           )}
                         </Avatar>
-                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#070f1c] bg-green-400" />
+                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#080c10] bg-green-400" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-200">
@@ -916,7 +916,7 @@ export function InboxWorkspace({
                       <button
                         type="button"
                         onClick={startMeeting}
-                        className="hidden items-center gap-1.5 rounded-lg border border-[#1e2d40] bg-[#0a1628] px-3 py-1.5 text-xs text-gray-300 hover:border-blue-500 hover:text-white sm:flex"
+                        className="hidden items-center gap-1.5 rounded-lg border border-[#29323d] bg-[#0d131a] px-3 py-1.5 text-xs text-gray-300 hover:border-blue-500 hover:text-white sm:flex"
                       >
                         <Video className="h-3.5 w-3.5" />
                         Start Meeting
@@ -926,11 +926,11 @@ export function InboxWorkspace({
                       <div className="relative">
                         <QuickIconButton icon={MoreVertical} label="More options" onClick={() => setHeaderMenuOpen((v) => !v)} />
                         {headerMenuOpen ? (
-                          <div className="absolute right-0 top-10 z-30 min-w-44 rounded-xl border border-[#1e2d40] bg-[#0a1628] p-1 shadow-xl">
+                          <div className="absolute right-0 top-10 z-30 min-w-44 rounded-xl border border-[#29323d] bg-[#0d131a] p-1 shadow-xl">
                             <button
                               type="button"
                               onClick={() => { setDeleteChatConfirmOpen(true); setHeaderMenuOpen(false); }}
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-red-400 transition-colors hover:bg-[#1e2d40]"
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-red-400 transition-colors hover:bg-[#29323d]"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                               Delete Conversation
@@ -963,9 +963,9 @@ export function InboxWorkspace({
                     if (item.kind === "separator") {
                       return (
                         <div key={`sep-${idx}`} className="flex items-center gap-3 py-3">
-                          <div className="flex-1 border-t border-[#1e2d40]" />
+                          <div className="flex-1 border-t border-[#29323d]" />
                           <span className="text-[11px] text-gray-500">{item.label}</span>
-                          <div className="flex-1 border-t border-[#1e2d40]" />
+                          <div className="flex-1 border-t border-[#29323d]" />
                         </div>
                       );
                     }
@@ -1016,13 +1016,13 @@ export function InboxWorkspace({
                               </button>
                               {showMenu ? (
                                 <div
-                                  className={`absolute top-6 z-30 min-w-36 rounded-xl border border-[#1e2d40] bg-[#0a1628] p-1 shadow-2xl ${isMe ? "right-0" : "left-0"}`}
+                                  className={`absolute top-6 z-30 min-w-36 rounded-xl border border-[#29323d] bg-[#0d131a] p-1 shadow-2xl ${isMe ? "right-0" : "left-0"}`}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <button
                                     type="button"
                                     onClick={() => { handlePinnedToggle(message); setMessageMenuId(null); }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-[#1e2d40]"
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-[#29323d]"
                                   >
                                     {isPinned ? <PinOff className="h-3.5 w-3.5 text-amber-400" /> : <Pin className="h-3.5 w-3.5 text-amber-400" />}
                                     {isPinned ? "Unpin" : "Pin"}
@@ -1031,7 +1031,7 @@ export function InboxWorkspace({
                                     <button
                                       type="button"
                                       onClick={() => { setEditingMessageId(String(message._id)); setEditDraft(message.content || ""); setMessageMenuId(null); }}
-                                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-[#1e2d40]"
+                                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-[#29323d]"
                                     >
                                       <Pencil className="h-3.5 w-3.5 text-blue-400" />
                                       Edit
@@ -1041,7 +1041,7 @@ export function InboxWorkspace({
                                     <button
                                       type="button"
                                       onClick={() => { if (selectedId) deleteMessageMutation.mutate({ conversationId: selectedId, messageId: String(message._id) }); setMessageMenuId(null); }}
-                                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-red-400 transition-colors hover:bg-[#1e2d40]"
+                                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-red-400 transition-colors hover:bg-[#29323d]"
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                       Delete
@@ -1065,7 +1065,7 @@ export function InboxWorkspace({
                                   }
                                   if (e.key === "Escape") { setEditingMessageId(null); setEditDraft(""); }
                                 }}
-                                className="rounded-xl border border-blue-500/60 bg-[#0d1a2d] px-3 py-2 text-sm text-gray-100 outline-none w-full"
+                                className="rounded-xl border border-blue-500/60 bg-[#141c25] px-3 py-2 text-sm text-gray-100 outline-none w-full"
                               />
                               <button
                                 type="button"
@@ -1078,7 +1078,7 @@ export function InboxWorkspace({
                               <button
                                 type="button"
                                 onClick={() => { setEditingMessageId(null); setEditDraft(""); }}
-                                className="shrink-0 rounded-full border border-[#1e2d40] p-1.5 text-gray-400 hover:text-white"
+                                className="shrink-0 rounded-full border border-[#29323d] p-1.5 text-gray-400 hover:text-white"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -1088,7 +1088,7 @@ export function InboxWorkspace({
                               className={`rounded-2xl px-4 py-3 ${
                                 isMe
                                   ? "rounded-br-sm bg-blue-600 text-white"
-                                  : "rounded-bl-sm bg-[#1e2d40] text-gray-200"
+                                  : "rounded-bl-sm bg-[#29323d] text-gray-200"
                               }`}
                             >
                               {message.content ? (
@@ -1179,9 +1179,9 @@ export function InboxWorkspace({
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t border-[#1e2d40] px-4 py-3">
+              <div className="border-t border-[#29323d] px-4 py-3">
                 {chatAttachment ? (
-                  <div className="mb-3 flex items-center justify-between rounded-xl border border-[#1e2d40] bg-[#0a1628] px-3 py-2 text-xs text-gray-300">
+                  <div className="mb-3 flex items-center justify-between rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2 text-xs text-gray-300">
                     <div className="flex items-center gap-2 min-w-0">
                       {chatAttachment.type.startsWith("image/") ? (
                         <Image className="h-3.5 w-3.5 shrink-0 text-green-400" />
@@ -1225,7 +1225,7 @@ export function InboxWorkspace({
                       onClick={() => setAttachOpen((v) => !v)}
                     />
                     {attachOpen ? (
-                      <div className="absolute bottom-12 left-0 z-20 min-w-44 rounded-xl border border-[#1e2d40] bg-[#0a1628] p-1 shadow-xl">
+                      <div className="absolute bottom-12 left-0 z-20 min-w-44 rounded-xl border border-[#29323d] bg-[#0d131a] p-1 shadow-xl">
                         <AttachOption
                           icon={Image}
                           label="Image"
@@ -1318,7 +1318,7 @@ export function InboxWorkspace({
                       }
                     }}
                     disabled={!recipient}
-                    className="flex-1 bg-[#0d1a2d] border-[#1e2d40] text-sm placeholder:text-gray-500"
+                    className="flex-1 bg-[#141c25] border-[#29323d] text-sm placeholder:text-gray-500"
                   />
                   <Button
                     size="icon"
@@ -1337,11 +1337,11 @@ export function InboxWorkspace({
           </div>
         ) : (
           <div
-            className="flex overflow-hidden rounded-xl border border-[#1e2d40]"
-            style={{ height: "calc(100vh - 200px)", minHeight: 520 }}
+            className="flex overflow-hidden rounded-xl border border-[#29323d]"
+            style={{ height: "calc(100vh - 200px)", minHeight: 380 }}
           >
-            <div className="flex w-72 shrink-0 flex-col border-r border-[#1e2d40] bg-[#0a1628]">
-              <div className="border-b border-[#1e2d40] p-4">
+            <div className="flex w-72 shrink-0 flex-col border-r border-[#29323d] bg-[#0d131a]">
+              <div className="border-b border-[#29323d] p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-200">Email</h3>
                   <Button size="sm" onClick={() => setMailDialogOpen(true)}>
@@ -1388,10 +1388,10 @@ export function InboxWorkspace({
                         key={mail._id}
                         type="button"
                         onClick={() => setSelectedMailId(String(mail._id))}
-                        className={`block w-full border-b border-[#1e2d40] px-4 py-3 text-left transition-colors ${
+                        className={`block w-full border-b border-[#29323d] px-4 py-3 text-left transition-colors ${
                           String(selectedMail?._id) === String(mail._id)
                             ? "bg-blue-600/10"
-                            : "hover:bg-[#0d1a2d]"
+                            : "hover:bg-[#141c25]"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -1407,8 +1407,8 @@ export function InboxWorkspace({
               </div>
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col border-r border-[#1e2d40] bg-[#070f1c]">
-              <div className="border-b border-[#1e2d40] px-5 py-4">
+            <div className="flex min-w-0 flex-1 flex-col border-r border-[#29323d] bg-[#080c10]">
+              <div className="border-b border-[#29323d] px-5 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-gray-100">
@@ -1432,7 +1432,7 @@ export function InboxWorkspace({
                   <p className="text-sm text-gray-500">Pick an email from the list or compose a new one.</p>
                 ) : (
                   <div className="space-y-5">
-                    <div className="rounded-2xl border border-[#1e2d40] bg-[#0a1628] p-4">
+                    <div className="rounded-2xl border border-[#29323d] bg-[#0d131a] p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-gray-100">
@@ -1449,14 +1449,14 @@ export function InboxWorkspace({
                               queryClient.invalidateQueries({ queryKey: ["mail-list"] })
                             )
                           }
-                          className="rounded-full border border-[#1e2d40] p-2 text-gray-300 hover:text-yellow-300"
+                          className="rounded-full border border-[#29323d] p-2 text-gray-300 hover:text-yellow-300"
                         >
                           <Pin className="h-4 w-4" />
                         </button>
                       </div>
                       <p className="whitespace-pre-wrap text-sm text-gray-200">{selectedMail.body || "No message body."}</p>
                     </div>
-                    <div className="rounded-2xl border border-[#1e2d40] bg-[#0a1628] p-4">
+                    <div className="rounded-2xl border border-[#29323d] bg-[#0d131a] p-4">
                       <h4 className="mb-3 text-sm font-semibold text-gray-100">Attachments</h4>
                       {selectedMail.attachments?.length ? (
                         <div className="space-y-2">
@@ -1466,7 +1466,7 @@ export function InboxWorkspace({
                               href={file.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="flex items-center gap-3 rounded-xl border border-[#1e2d40] px-3 py-2 hover:border-blue-500/60"
+                              className="flex items-center gap-3 rounded-xl border border-[#29323d] px-3 py-2 hover:border-blue-500/60"
                             >
                               <Paperclip className="h-4 w-4 text-blue-300" />
                               <span className="truncate text-sm text-gray-100">{file.fileName || "Attachment"}</span>
@@ -1520,7 +1520,7 @@ export function InboxWorkspace({
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
             rows={5}
-            className="w-full rounded-xl border border-[#1e2d40] bg-[#0a1628] px-3 py-2 text-sm text-gray-100 outline-none"
+            className="w-full rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2 text-sm text-gray-100 outline-none"
             placeholder="Write a private note about this contact..."
           />
           <div className="flex justify-end gap-2">
@@ -1548,7 +1548,7 @@ export function InboxWorkspace({
                     href={file.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-[#1e2d40] px-3 py-3 hover:border-blue-500/60"
+                    className="flex items-center gap-3 rounded-xl border border-[#29323d] px-3 py-3 hover:border-blue-500/60"
                   >
                     <div className={`rounded-lg ${style.bg} p-2 ${style.text}`}>
                       <FileText className="h-4 w-4" />
@@ -1575,7 +1575,7 @@ export function InboxWorkspace({
               <p className="text-sm text-gray-500">No pinned items yet.</p>
             ) : (
               pinnedForConversation.map((item) => (
-                <div key={item.id} className="rounded-xl border border-[#1e2d40] p-3">
+                <div key={item.id} className="rounded-xl border border-[#29323d] p-3">
                   <div className="flex items-start gap-2 mb-1">
                     <Pin className="h-3 w-3 text-amber-400 mt-0.5 shrink-0" />
                     <p className="text-sm text-gray-100">{item.body}</p>
@@ -1631,7 +1631,7 @@ function QuickIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="rounded-full border border-[#1e2d40] bg-[#0a1628] p-2 text-gray-400 transition hover:border-blue-500/60 hover:text-white"
+      className="rounded-full border border-[#29323d] bg-[#0d131a] p-2 text-gray-400 transition hover:border-blue-500/60 hover:text-white"
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -1659,9 +1659,9 @@ function EmojiPicker({
   const categoryLabel = EMOJI_CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "";
 
   return (
-    <div className="absolute bottom-14 left-0 z-30 w-80 overflow-hidden rounded-2xl border border-[#1e2d40] bg-[#0a1628] shadow-2xl">
+    <div className="absolute bottom-14 left-0 z-30 w-80 overflow-hidden rounded-2xl border border-[#29323d] bg-[#0d131a] shadow-2xl">
       {/* Search + delete row */}
-      <div className="flex items-center gap-2 border-b border-[#1e2d40] px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-[#29323d] px-3 py-2">
         <Search className="h-4 w-4 shrink-0 text-gray-500" />
         <input
           autoFocus
@@ -1674,7 +1674,7 @@ function EmojiPicker({
           type="button"
           onClick={onDelete}
           title="Delete"
-          className="rounded-lg p-1 text-gray-500 hover:bg-[#1e2d40] hover:text-gray-200"
+          className="rounded-lg p-1 text-gray-500 hover:bg-[#29323d] hover:text-gray-200"
         >
           <X className="h-4 w-4" />
         </button>
@@ -1682,7 +1682,7 @@ function EmojiPicker({
           type="button"
           onClick={onClose}
           title="Close"
-          className="rounded-lg p-1 text-gray-500 hover:bg-[#1e2d40] hover:text-gray-200"
+          className="rounded-lg p-1 text-gray-500 hover:bg-[#29323d] hover:text-gray-200"
         >
           ✕
         </button>
@@ -1704,7 +1704,7 @@ function EmojiPicker({
                 key={`${emoji}-${idx}`}
                 type="button"
                 onClick={() => onSelect(emoji)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-xl transition-colors hover:bg-[#1e2d40]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-xl transition-colors hover:bg-[#29323d]"
               >
                 {emoji}
               </button>
@@ -1714,7 +1714,7 @@ function EmojiPicker({
       </div>
 
       {/* Category tabs */}
-      <div className="flex items-center justify-around border-t border-[#1e2d40] px-1 py-1.5">
+      <div className="flex items-center justify-around border-t border-[#29323d] px-1 py-1.5">
         {EMOJI_CATEGORIES.map((cat) => (
           <button
             key={cat.id}
@@ -1727,7 +1727,7 @@ function EmojiPicker({
             className={`flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors ${
               activeCategory === cat.id && !search
                 ? "bg-blue-600/20 ring-1 ring-blue-500/40"
-                : "hover:bg-[#1e2d40]"
+                : "hover:bg-[#29323d]"
             }`}
           >
             {cat.icon}
@@ -1755,7 +1755,7 @@ function AttachOption({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-[#1e2d40]"
+      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-[#29323d]"
     >
       <div className={`shrink-0 ${color}`}>
         <Icon className="h-4 w-4" />
@@ -1783,7 +1783,7 @@ function ActionIcon({
       onClick={onClick}
       className="flex flex-col items-center gap-1.5 rounded-xl border border-[#182233] p-2 text-gray-300 hover:border-blue-500/60 hover:text-white transition-colors"
     >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#26354b] bg-[#0d1a2d]">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#26354b] bg-[#141c25]">
         <Icon className="h-3.5 w-3.5" />
       </div>
       <span className="text-[9px] leading-tight text-center">{label}</span>
@@ -1793,7 +1793,7 @@ function ActionIcon({
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex justify-between border-b border-[#1e2d40] py-2 text-xs last:border-0">
+    <div className="flex justify-between border-b border-[#29323d] py-2 text-xs last:border-0">
       <span className="text-gray-500 shrink-0">{label}</span>
       <span className="max-w-40 truncate text-right text-gray-200">{children}</span>
     </div>
@@ -1851,7 +1851,7 @@ function NewConversationDialog({
               <button
                 key={person._id}
                 onClick={() => onSelectPeer(person)}
-                className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-[#1e2d40]"
+                className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-[#29323d]"
               >
                 <Avatar className="h-8 w-8">
                   {person.profileImage?.url ? (
@@ -1936,7 +1936,7 @@ function ComposeMailDialog({
               value={body}
               onChange={(event) => setBody(event.target.value)}
               rows={8}
-              className="w-full rounded-xl border border-[#1e2d40] bg-[#0a1628] px-3 py-2 text-sm text-gray-100 outline-none"
+              className="w-full rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2 text-sm text-gray-100 outline-none"
               placeholder="Write your email..."
             />
           </div>
@@ -1953,7 +1953,7 @@ function ComposeMailDialog({
             className="hidden"
             onChange={(event) => setAttachment(event.target.files?.[0] || null)}
           />
-          <div className="flex items-center justify-between rounded-xl border border-[#1e2d40] bg-[#0a1628] px-3 py-2">
+          <div className="flex items-center justify-between rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2">
             <div className="flex items-center gap-2">
               <QuickIconButton icon={Paperclip} label="Attach file" onClick={() => attachmentInputRef.current?.click()} />
               <QuickIconButton icon={Image} label="Attach image" onClick={() => imageInputRef.current?.click()} />

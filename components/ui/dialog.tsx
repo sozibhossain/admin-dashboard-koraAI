@@ -26,20 +26,23 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { overlayClassName?: string; position?: "center" | "right" }
+>(({ className, children, overlayClassName, position = "center", ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-xl border border-[#1e2d40] bg-[#0a1628] p-6 shadow-xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "fixed z-50 w-full max-w-lg rounded-xl border border-[#1e2d40] bg-[#0a1628] p-6 shadow-xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        position === "right"
+          ? "left-auto right-4 top-4 translate-x-0 translate-y-0"
+          : "left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className
       )}
       {...props}
     >
       {children}
-      <DialogClose className="absolute right-4 top-4 rounded-md opacity-70 text-gray-400 hover:opacity-100 hover:text-gray-200 focus:outline-none">
+      <DialogClose aria-label="Close dialog" className="absolute right-4 top-4 rounded-md opacity-70 text-gray-400 hover:opacity-100 hover:text-gray-200 focus:outline-none">
         <X className="h-4 w-4" />
       </DialogClose>
     </DialogPrimitive.Content>

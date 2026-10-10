@@ -1,0 +1,6 @@
+"use client";
+import { useState } from "react";
+import { useMutation,useQueryClient } from "@tanstack/react-query";
+import api from "@/lib/axios";
+import { errorMessage } from "@/lib/novya";
+export function CustomerDocumentUpload({id}:{id:string}){const cache=useQueryClient();const [file,setFile]=useState<File|null>(null);const upload=useMutation({mutationFn:()=>{if(!file)throw new Error("Choose a document");if(file.size>25*1024*1024)throw new Error("Maximum file size is 25 MB");const data=new FormData();data.append("file",file);return api.post(`/novya/management/customers/${id}/documents`,data,{headers:{"Content-Type":"multipart/form-data"}});},onSuccess:()=>{cache.invalidateQueries({queryKey:["novya"]});setFile(null);}});return <form onSubmit={e=>{e.preventDefault();upload.mutate();}} className="mt-5"><label className="nv-field"><span>Upload document · Maximum 25 MB</span><input className="nv-input" type="file" aria-label="Customer document" onChange={e=>setFile(e.target.files?.[0]??null)}/></label><button className="nv-button mt-3" disabled={!file||upload.isPending}>{upload.isPending?"Uploading…":"Upload document"}</button>{upload.error&&<p className="nv-error-text">{errorMessage(upload.error)}</p>}</form>;}
