@@ -194,6 +194,7 @@ export const inboxApi = {
 };
 
 export const mailApi = {
+  action: (id: string, data: FormData) => api.post(`/mail/${id}/action`, data),
   getAll: (params?: object) => api.get("/mail", { params }),
   getById: (id: string) => api.get(`/mail/${id}`),
   create: (data: FormData) =>

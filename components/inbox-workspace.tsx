@@ -2,13 +2,15 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { inboxApi, mailApi } from "@/lib/api";
 import { useInboxSocket } from "@/lib/socket";
-import { PageHeading } from "@/components/novya/primitives";
+import "@/app/inbox.css";
+import Link from "next/link";
+import { QueryState, PageHeading } from "@/components/novya/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,7 +33,7 @@ import {
   Edit,
   File,
   FileText,
-  Image,
+  Image as ImageIcon,
   Mail,
   MessageSquare,
   MoreVertical,
@@ -49,6 +51,7 @@ import {
   Users,
   Video,
   X,
+  Star, Inbox, Clock, FilePenLine, RefreshCw, ChevronRight, Reply, Forward, Sparkles,
 } from "lucide-react";
 
 type InboxWorkspaceProps = {
@@ -100,16 +103,6 @@ const EMOJI_CATEGORIES = [
     emojis: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☯️","✡️","🕎","☪️","🛐","⛎","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","🔯","♀️","♂️","⚧️","✖️","➕","➖","➗","♾️","💲","💱","™️","©️","®️","〰️","➰","➿","🔚","🔙","🔛","🔜","🔝","🔀","🔁","🔂","▶️","⏸️","⏹️","⏺️","⏭️","⏮️","⏩","⏪","⏫","⏬","🔃","🔄","🎦","🔅","🔆","📶","📳","📴","📵","📴","🚫","⛔","🚳","🚭","🚯","🚰","🚱","🔞","💯","🔃","✅","❌","❎","💠","🔷","🔶","🔹","🔸","🔺","🔻","🔲","🔳","▪️","▫️","◾","◽","◼️","◻️","⬛","⬜"],
   },
 ];
-
-const EMOJI_CATEGORY_ICONS: Record<string, string> = {
-  smileys: "😊",
-  animals: "🐶",
-  food: "🍕",
-  activities: "⚽",
-  travel: "✈️",
-  objects: "💡",
-  symbols: "❤️",
-};
 
 const getOtherParticipant = (conversation: any, currentUserId?: string) => {
   if (!conversation) return null;
@@ -174,25 +167,40 @@ const isVideoFile = (message: any) => {
 };;
 
 function usePersistentState<T>(key: string, fallback: T) {
-  const [state, setState] = useState<T>(fallback);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (raw) {
-        setState(JSON.parse(raw));
-      }
-    } catch {
-      window.localStorage.removeItem(key);
-    }
+  const initial = useRef(fallback);
+  const store = useMemo(() => {
+    const cache = new Map<string | null, T>();
+    return {
+      read: () => {
+        try {
+          const raw = window.localStorage.getItem(key);
+          if (cache.has(raw)) return cache.get(raw)!;
+          const value = raw ? JSON.parse(raw) as T : initial.current;
+          cache.clear();
+          cache.set(raw, value);
+          return value;
+        } catch { return initial.current; }
+      },
+      subscribe: (notify: () => void) => {
+        const onStorage = (event: StorageEvent) => { if (!event.key || event.key === key) notify(); };
+        const onLocalChange = () => notify();
+        window.addEventListener("storage", onStorage);
+        window.addEventListener(`inbox-state:${key}`, onLocalChange);
+        return () => {
+          window.removeEventListener("storage", onStorage);
+          window.removeEventListener(`inbox-state:${key}`, onLocalChange);
+        };
+      },
+    };
   }, [key]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(state));
-  }, [key, state]);
-
+  const state = useSyncExternalStore(store.subscribe, store.read, () => initial.current);
+  const setState = (value: T | ((current: T) => T)) => {
+    try {
+      const next = typeof value === "function" ? (value as (current: T) => T)(store.read()) : value;
+      window.localStorage.setItem(key, JSON.stringify(next));
+      window.dispatchEvent(new Event(`inbox-state:${key}`));
+    } catch { toast.error("Unable to save pinned items in this browser."); }
+  };
   return [state, setState] as const;
 }
 
@@ -210,12 +218,16 @@ export function InboxWorkspace({
 
   const [activeTab, setActiveTab] = useState<"chat" | "email">("chat");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIdOverride, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
   const [composerOpen, setComposerOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
-  const [emailFolder, setEmailFolder] = useState<"inbox" | "sent">("inbox");
+  const [emailFolder, setEmailFolder] = useState<"inbox" | "sent" | "starred" | "draft">("inbox");
+  const [mailSearch, setMailSearch] = useState("");
+  const [mailPage, setMailPage] = useState(1);
+  const [mailFilter, setMailFilter] = useState<"all" | "unread">("all");
+  const [mailAction, setMailAction] = useState<{ id: string; type: "reply" | "forward" } | null>(null);
   const [selectedMailId, setSelectedMailId] = useState<string | null>(null);
   const [mailDialogOpen, setMailDialogOpen] = useState(false);
   const [mailTo, setMailTo] = useState("");
@@ -246,7 +258,7 @@ export function InboxWorkspace({
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const chatFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data: conversationsResponse, isLoading: conversationsLoading } = useQuery({
+  const { data: conversationsResponse, isLoading: conversationsLoading, error: conversationsError, refetch: refetchConversations } = useQuery({
     queryKey: ["inbox-conversations"],
     queryFn: () => inboxApi.getChats().then((response) => response.data),
     enabled: activeTab === "chat",
@@ -269,18 +281,13 @@ export function InboxWorkspace({
     });
   }, [conversations, currentUserId, search, filterTab]);
 
-  useEffect(() => {
-    if (activeTab !== "chat") return;
-    if (!selectedId && filteredConversations.length > 0) {
-      setSelectedId(String(filteredConversations[0]._id));
-    }
-  }, [activeTab, filteredConversations, selectedId]);
+  const selectedId = selectedIdOverride ?? (filteredConversations[0] ? String(filteredConversations[0]._id) : null);
 
   const selectedConversation = conversations.find(
     (conversation) => String(conversation._id) === selectedId
   );
 
-  const { data: threadResponse, isLoading: threadLoading } = useQuery({
+  const { data: threadResponse, isLoading: threadLoading, error: threadError, refetch: refetchThread } = useQuery({
     queryKey: ["inbox-conversation", selectedId],
     enabled: activeTab === "chat" && Boolean(selectedId) && !String(selectedId).startsWith("pending-"),
     queryFn: () =>
@@ -288,31 +295,22 @@ export function InboxWorkspace({
   });
 
   const thread = threadResponse?.data;
-  const messages: any[] = thread?.messages || (selectedConversation as any)?.messages || [];
+  const messages: any[] = useMemo(() => thread?.messages || selectedConversation?.messages || [], [thread?.messages, selectedConversation?.messages]);
   const recipient = getOtherParticipant(selectedConversation, currentUserId);
+  const contactName = selectedConversation?.groupName || recipient?.name;
 
-  const { data: mailsResponse, isLoading: mailsLoading } = useQuery({
-    queryKey: ["mail-list", emailFolder],
+  const { data: mailsResponse, isLoading: mailsLoading, error: mailsError, refetch: refetchMails } = useQuery({
+    queryKey: ["mail-list", emailFolder, mailSearch, mailPage],
     enabled: activeTab === "email",
     queryFn: () =>
-      mailApi.getAll({ type: emailFolder, limit: 25 }).then((response) => response.data),
+      mailApi.getAll({ type: emailFolder, search: mailSearch, page: mailPage, limit: 25 }).then((response) => response.data),
   });
 
   const mails: any[] = mailsResponse?.data?.mails || [];
-  const selectedMail = mails.find((mail) => String(mail._id) === String(selectedMailId)) || mails[0] || null;
+  const visibleMails = mails.filter(mail => mailFilter === "all" || !(mail.isReadBy || []).some((id: any) => String(id?._id || id) === String(currentUserId)));
+  const selectedMail = visibleMails.find((mail) => String(mail._id) === String(selectedMailId)) || visibleMails[0] || null;
 
-  useEffect(() => {
-    if (activeTab !== "email") return;
-    if (selectedMail && String(selectedMailId) !== String(selectedMail._id)) {
-      setSelectedMailId(String(selectedMail._id));
-    }
-  }, [activeTab, selectedMail, selectedMailId]);
 
-  useEffect(() => {
-    if (recipient?.email) {
-      setMailTo(recipient.email);
-    }
-  }, [recipient?.email]);
 
   const sendMutation = useMutation({
     mutationFn: () => {
@@ -390,11 +388,16 @@ export function InboxWorkspace({
       if (mailAttachment) {
         payload.append("attachments", mailAttachment);
       }
+      if (mailAction) {
+        payload.append("type", mailAction.type);
+        return mailApi.action(mailAction.id, payload);
+      }
       return mailApi.create(payload);
     },
     onSuccess: () => {
       toast.success("Email sent");
       setMailDialogOpen(false);
+      setMailAction(null);
       setMailSubject("");
       setMailBody("");
       setMailAttachment(null);
@@ -612,26 +615,57 @@ export function InboxWorkspace({
     router.push("/calendar");
   };
 
+  const openNewMail = () => {
+    setMailAction(null);
+    setMailTo("");
+    setMailSubject("");
+    setMailBody("");
+    setMailAttachment(null);
+    setMailDialogOpen(true);
+  };
+  const prepareMailAction = (type: "reply" | "forward") => {
+    if (!selectedMail) return;
+    setMailAction({ id: String(selectedMail._id), type });
+    setMailTo(type === "reply" ? selectedMail.from?.email || "" : "");
+    setMailSubject(`${type === "reply" ? "Re" : "Fwd"}: ${selectedMail.subject || "(No subject)"}`);
+    setMailBody("");
+    setMailAttachment(null);
+    setMailDialogOpen(true);
+  };
+  const toggleMailStar = async () => {
+    if (!selectedMail) return;
+    try {
+      await mailApi.toggleStar(String(selectedMail._id));
+      await queryClient.invalidateQueries({ queryKey: ["mail-list"] });
+    } catch { toast.error("Unable to update starred email. Please try again."); }
+  };
+  const changeMailFolder = (folder: typeof emailFolder) => {
+    setEmailFolder(folder);
+    setMailPage(1);
+    setSelectedMailId(null);
+    setMailFilter("all");
+  };
+
   const renderContactPanel = () => (
-    <div className="hidden w-72 shrink-0 flex-col space-y-3 overflow-y-auto bg-[#0d131a] p-4 xl:flex">
+    <aside className="ib-contact hidden shrink-0 flex-col space-y-3 overflow-y-auto p-4 xl:flex">
       <h3 className="text-sm font-semibold text-gray-200">Contact Details</h3>
       {recipient ? (
         <>
-          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#10171e] p-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="relative shrink-0">
                 <Avatar className="h-14 w-14">
                   {recipient.profileImage?.url ? (
                     <AvatarImage src={recipient.profileImage.url} alt={recipient.name} />
                   ) : (
-                    <AvatarFallback className="text-sm">{getInitials(recipient.name || "U")}</AvatarFallback>
+                    <AvatarFallback className="text-sm">{getInitials(contactName || "U")}</AvatarFallback>
                   )}
                 </Avatar>
-                <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-[#0b1422] bg-green-400" />
+                <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-[#10171e] bg-green-400" />
               </div>
               <div>
-                <p className="font-semibold text-gray-100 text-sm">{recipient.name}</p>
-                <p className="text-xs text-green-400">Online</p>
+                <p className="font-semibold text-gray-100 text-sm">{contactName}</p>
+                <p className="text-xs text-gray-400">{selectedConversation?.isGroup ? "Group conversation" : "Team conversation"}</p>
                 <p className="text-xs text-gray-400">{recipient.role?.replace(/_/g, " ")}</p>
               </div>
             </div>
@@ -643,7 +677,7 @@ export function InboxWorkspace({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#10171e] p-4">
             <h4 className="mb-3 text-sm font-semibold text-gray-100">About</h4>
             <InfoRow label="Email">{recipient.email || "—"}</InfoRow>
             <InfoRow label="Phone">{recipient.phoneNumber || "—"}</InfoRow>
@@ -653,7 +687,7 @@ export function InboxWorkspace({
             </InfoRow>
           </div>
 
-          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#10171e] p-4">
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-100">Shared Files</h4>
               <button
@@ -677,7 +711,7 @@ export function InboxWorkspace({
                       href={file.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center gap-3 rounded-xl border border-[#182233] px-3 py-2 text-sm hover:border-blue-500/60"
+                      className="flex items-center gap-3 rounded-xl border border-[#29343e] px-3 py-2 text-sm hover:border-blue-500/60"
                     >
                       <div className={`rounded-lg ${style.bg} p-2 ${style.text}`}>
                         <FileText className="h-4 w-4" />
@@ -693,7 +727,7 @@ export function InboxWorkspace({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#29323d] bg-[#0b1422] p-4">
+          <div className="rounded-2xl border border-[#29323d] bg-[#10171e] p-4">
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-100">Pinned Messages</h4>
               <button
@@ -709,7 +743,7 @@ export function InboxWorkspace({
                 <p className="text-xs text-gray-500">No pinned items yet.</p>
               ) : (
                 pinnedForConversation.slice(0, 2).map((item) => (
-                  <div key={item.id} className="rounded-xl border border-[#182233] p-3">
+                  <div key={item.id} className="rounded-xl border border-[#29343e] p-3">
                     <div className="flex items-start gap-2 mb-1">
                       <Pin className="h-3 w-3 text-amber-400 mt-0.5 shrink-0" />
                       <p className="line-clamp-2 text-sm text-gray-100">{item.body}</p>
@@ -728,29 +762,29 @@ export function InboxWorkspace({
           Select a conversation to see contact details.
         </p>
       )}
-    </div>
+    </aside>
   );
 
   return (
-    <div>
-      <PageHeading title="Inbox" subtitle={subtitle} />
-
-      {/* Tabs row — inside content, below header */}
-      <div className="flex items-center justify-end gap-2 border-b border-[#29323d] bg-[#080c10] px-4 py-2 sm:px-6">
-        <div className="flex items-center rounded-xl border border-[#29323d] bg-[#0d131a] p-1 gap-1">
+    <div className={`ib-page ${activeTab === "email" ? "ib-email-page" : ""}`}>
+      <PageHeading title={activeTab === "chat" ? "Inbox" : "Email"} subtitle={activeTab === "chat" ? subtitle : "Your NOVYA admin mailbox, organized in one workspace."} action={
+      <div className="ib-header-actions">
+        <div className="ib-tabs" role="tablist" aria-label="Inbox sections">
           <button
             type="button"
             onClick={() => setActiveTab("chat")}
+            role="tab" aria-selected={activeTab === "chat"}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               activeTab === "chat" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200"
             }`}
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            Chats
+            Inbox
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("email")}
+            role="tab" aria-selected={activeTab === "email"}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               activeTab === "email" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200"
             }`}
@@ -759,21 +793,17 @@ export function InboxWorkspace({
             Email
           </button>
         </div>
-        <Button size="sm" onClick={() => (activeTab === "chat" ? setComposerOpen(true) : setMailDialogOpen(true))}>
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          {activeTab === "chat" ? "New Conversation" : "Compose Email"}
-        </Button>
-      </div>
+        <button className="ib-create" aria-label={activeTab === "chat" ? "New conversation" : "New email"} onClick={() => activeTab === "chat" ? setComposerOpen(true) : openNewMail()}><Plus size={18}/></button>
+      </div>}/>
 
-      <div className="p-3 sm:p-4 lg:p-6">
+      <div className="ib-content">
         {activeTab === "chat" ? (
           <div
-            className="flex overflow-hidden rounded-xl border border-[#29323d]"
-            style={{ height: "calc(100vh - 200px)", minHeight: 380 }}
+            className="ib-workspace ib-chat-workspace"
           >
             {/* Conversations List */}
             <div
-              className={`${mobileView === "list" ? "flex" : "hidden"} w-72 shrink-0 flex-col border-r border-[#29323d] bg-[#0d131a] lg:flex`}
+              className={`ib-conversations ${mobileView === "list" ? "flex" : "hidden"} w-72 shrink-0 flex-col border-r border-[#29323d] bg-[#0b1117] lg:flex`}
             >
               <div className="border-b border-[#29323d] p-4">
                 <div className="mb-3 flex items-center justify-between">
@@ -814,7 +844,7 @@ export function InboxWorkspace({
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto">
-                {conversationsLoading ? (
+                {conversationsError ? <QueryState loading={false} error="Unable to load conversations." retry={() => refetchConversations()}/> : conversationsLoading ? (
                   <div className="space-y-3 p-3">
                     {Array.from({ length: 5 }).map((_, index) => (
                       <Skeleton key={index} className="h-14 w-full" />
@@ -838,7 +868,7 @@ export function InboxWorkspace({
                           setMobileView("chat");
                         }}
                         className={`flex w-full items-center gap-3 border-b border-[#29323d] px-4 py-3 text-left transition-colors ${
-                          isSelected ? "bg-blue-600/10" : "hover:bg-[#141c25]"
+                          isSelected ? "bg-blue-600/10" : "hover:bg-[#151d25]"
                         }`}
                       >
                         <div className="relative shrink-0">
@@ -879,7 +909,7 @@ export function InboxWorkspace({
 
             {/* Chat View */}
             <div
-              className={`${mobileView === "chat" ? "flex" : "hidden"} min-w-0 flex-1 flex-col border-r border-[#29323d] bg-[#080c10] lg:flex`}
+              className={`ib-thread ${mobileView === "chat" ? "flex" : "hidden"} min-w-0 flex-1 flex-col border-r border-[#29323d] bg-[#080c10] lg:flex`}
             >
               <div className="flex items-center justify-between border-b border-[#29323d] px-4 py-3">
                 {selectedConversation ? (
@@ -909,14 +939,14 @@ export function InboxWorkspace({
                         <p className="text-sm font-medium text-gray-200">
                           {getConversationName(selectedConversation, currentUserId)}
                         </p>
-                        <p className="text-[10px] text-green-400">Online</p>
+                        <p className="text-[10px] text-gray-400">Team conversation</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={startMeeting}
-                        className="hidden items-center gap-1.5 rounded-lg border border-[#29323d] bg-[#0d131a] px-3 py-1.5 text-xs text-gray-300 hover:border-blue-500 hover:text-white sm:flex"
+                        className="hidden items-center gap-1.5 rounded-lg border border-[#29323d] bg-[#0b1117] px-3 py-1.5 text-xs text-gray-300 hover:border-blue-500 hover:text-white sm:flex"
                       >
                         <Video className="h-3.5 w-3.5" />
                         Start Meeting
@@ -926,7 +956,7 @@ export function InboxWorkspace({
                       <div className="relative">
                         <QuickIconButton icon={MoreVertical} label="More options" onClick={() => setHeaderMenuOpen((v) => !v)} />
                         {headerMenuOpen ? (
-                          <div className="absolute right-0 top-10 z-30 min-w-44 rounded-xl border border-[#29323d] bg-[#0d131a] p-1 shadow-xl">
+                          <div className="absolute right-0 top-10 z-30 min-w-44 rounded-xl border border-[#29323d] bg-[#0b1117] p-1 shadow-xl">
                             <button
                               type="button"
                               onClick={() => { setDeleteChatConfirmOpen(true); setHeaderMenuOpen(false); }}
@@ -945,8 +975,8 @@ export function InboxWorkspace({
                 )}
               </div>
 
-              <div className="flex-1 space-y-1 overflow-y-auto px-5 py-4">
-                {!selectedConversation ? (
+              <div className="ib-messages flex-1 space-y-1 overflow-y-auto px-5 py-4">
+                {threadError ? <QueryState loading={false} error="Unable to load this conversation." retry={() => refetchThread()}/> : !selectedConversation ? (
                   <p className="text-center text-xs text-gray-500 mt-10">
                     Pick a conversation or start a new one.
                   </p>
@@ -1010,13 +1040,13 @@ export function InboxWorkspace({
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); setMessageMenuId(showMenu ? null : String(message._id)); }}
-                                className="rounded-full border border-[#26354b] bg-[#091321] px-2 py-1 text-[10px] text-gray-400 hover:text-white"
+                                className="rounded-full border border-[#34414e] bg-[#0b1218] px-2 py-1 text-[10px] text-gray-400 hover:text-white"
                               >
                                 •••
                               </button>
                               {showMenu ? (
                                 <div
-                                  className={`absolute top-6 z-30 min-w-36 rounded-xl border border-[#29323d] bg-[#0d131a] p-1 shadow-2xl ${isMe ? "right-0" : "left-0"}`}
+                                  className={`absolute top-6 z-30 min-w-36 rounded-xl border border-[#29323d] bg-[#0b1117] p-1 shadow-2xl ${isMe ? "right-0" : "left-0"}`}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <button
@@ -1065,7 +1095,7 @@ export function InboxWorkspace({
                                   }
                                   if (e.key === "Escape") { setEditingMessageId(null); setEditDraft(""); }
                                 }}
-                                className="rounded-xl border border-blue-500/60 bg-[#141c25] px-3 py-2 text-sm text-gray-100 outline-none w-full"
+                                className="rounded-xl border border-blue-500/60 bg-[#151d25] px-3 py-2 text-sm text-gray-100 outline-none w-full"
                               />
                               <button
                                 type="button"
@@ -1085,7 +1115,7 @@ export function InboxWorkspace({
                             </div>
                           ) : (
                             <div
-                              className={`rounded-2xl px-4 py-3 ${
+                              className={`ib-bubble rounded-2xl px-4 py-3 ${
                                 isMe
                                   ? "rounded-br-sm bg-blue-600 text-white"
                                   : "rounded-bl-sm bg-[#29323d] text-gray-200"
@@ -1136,7 +1166,7 @@ export function InboxWorkspace({
                                     className={`mt-2 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
                                       isMe
                                         ? "border-blue-400/40 bg-blue-500/10 text-white"
-                                        : "border-[#31445e] bg-[#0b1422] text-gray-100"
+                                        : "border-[#31445e] bg-[#10171e] text-gray-100"
                                     }`}
                                   >
                                     <Paperclip className="h-4 w-4 shrink-0 text-gray-400" />
@@ -1179,12 +1209,12 @@ export function InboxWorkspace({
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t border-[#29323d] px-4 py-3">
+              <div className="ib-composer border-t border-[#29323d] px-4 py-3">
                 {chatAttachment ? (
-                  <div className="mb-3 flex items-center justify-between rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2 text-xs text-gray-300">
+                  <div className="mb-3 flex items-center justify-between rounded-xl border border-[#29323d] bg-[#0b1117] px-3 py-2 text-xs text-gray-300">
                     <div className="flex items-center gap-2 min-w-0">
                       {chatAttachment.type.startsWith("image/") ? (
-                        <Image className="h-3.5 w-3.5 shrink-0 text-green-400" />
+                        <ImageIcon className="h-3.5 w-3.5 shrink-0 text-green-400" />
                       ) : chatAttachment.type.startsWith("video/") ? (
                         <Video className="h-3.5 w-3.5 shrink-0 text-purple-400" />
                       ) : chatAttachment.type.startsWith("audio/") ? (
@@ -1225,9 +1255,9 @@ export function InboxWorkspace({
                       onClick={() => setAttachOpen((v) => !v)}
                     />
                     {attachOpen ? (
-                      <div className="absolute bottom-12 left-0 z-20 min-w-44 rounded-xl border border-[#29323d] bg-[#0d131a] p-1 shadow-xl">
+                      <div className="absolute bottom-12 left-0 z-20 min-w-44 rounded-xl border border-[#29323d] bg-[#0b1117] p-1 shadow-xl">
                         <AttachOption
-                          icon={Image}
+                          icon={ImageIcon}
                           label="Image"
                           description="JPG, PNG, GIF, WEBP"
                           color="text-green-400"
@@ -1307,7 +1337,8 @@ export function InboxWorkspace({
                     ) : null}
                   </div>
 
-                  <Input
+                  <textarea
+                    aria-label="Message"
                     placeholder={recipient ? "Type a message..." : "Select a conversation first"}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
@@ -1318,11 +1349,13 @@ export function InboxWorkspace({
                       }
                     }}
                     disabled={!recipient}
-                    className="flex-1 bg-[#141c25] border-[#29323d] text-sm placeholder:text-gray-500"
+                    className="ib-message-input"
+                    rows={2}
                   />
                   <Button
                     size="icon"
-                    className="h-9 w-9 shrink-0 rounded-full bg-blue-600 hover:bg-blue-500"
+                    className="ib-send h-9 w-9 shrink-0 rounded-full bg-blue-600 hover:bg-blue-500"
+                    aria-label="Send message"
                     disabled={!canSend}
                     onClick={() => sendMutation.mutate()}
                   >
@@ -1336,153 +1369,29 @@ export function InboxWorkspace({
             {renderContactPanel()}
           </div>
         ) : (
-          <div
-            className="flex overflow-hidden rounded-xl border border-[#29323d]"
-            style={{ height: "calc(100vh - 200px)", minHeight: 380 }}
-          >
-            <div className="flex w-72 shrink-0 flex-col border-r border-[#29323d] bg-[#0d131a]">
-              <div className="border-b border-[#29323d] p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-200">Email</h3>
-                  <Button size="sm" onClick={() => setMailDialogOpen(true)}>
-                    <Plus className="mr-1 h-3.5 w-3.5" />
-                    Compose
-                  </Button>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setEmailFolder("inbox")}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                      emailFolder === "inbox" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200"
-                    }`}
-                  >
-                    Inbox
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEmailFolder("sent")}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                      emailFolder === "sent" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200"
-                    }`}
-                  >
-                    Sent
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {mailsLoading ? (
-                  <div className="space-y-3 p-3">
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <Skeleton key={index} className="h-16 w-full" />
-                    ))}
-                  </div>
-                ) : mails.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-gray-500">No emails found.</div>
-                ) : (
-                  mails.map((mail) => {
-                    const actor =
-                      emailFolder === "inbox" ? mail.from?.name : mail.to?.[0]?.name || mail.toEmails?.[0];
-                    return (
-                      <button
-                        key={mail._id}
-                        type="button"
-                        onClick={() => setSelectedMailId(String(mail._id))}
-                        className={`block w-full border-b border-[#29323d] px-4 py-3 text-left transition-colors ${
-                          String(selectedMail?._id) === String(mail._id)
-                            ? "bg-blue-600/10"
-                            : "hover:bg-[#141c25]"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-gray-100">{actor || "Email"}</p>
-                          <span className="text-[10px] text-gray-500">{formatLastTime(mail.createdAt)}</span>
-                        </div>
-                        <p className="truncate text-xs text-gray-400">{mail.subject || "(No subject)"}</p>
-                        <p className="truncate text-[11px] text-gray-500">{mail.body || "No body"}</p>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col border-r border-[#29323d] bg-[#080c10]">
-              <div className="border-b border-[#29323d] px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-100">
-                      {selectedMail?.subject || "Select an email"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {selectedMail
-                        ? `From ${selectedMail.from?.name || selectedMail.from?.email || "Unknown"}`
-                        : "Email details will appear here."}
-                    </p>
-                  </div>
-                  {selectedMail ? (
-                    <Button size="sm" variant="outline" onClick={() => setMailDialogOpen(true)}>
-                      Reply
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-5">
-                {!selectedMail ? (
-                  <p className="text-sm text-gray-500">Pick an email from the list or compose a new one.</p>
-                ) : (
-                  <div className="space-y-5">
-                    <div className="rounded-2xl border border-[#29323d] bg-[#0d131a] p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-100">
-                            {selectedMail.from?.name || selectedMail.from?.email || "Unknown sender"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {selectedMail.toEmails?.join(", ") || recipient?.email || ""}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            mailApi.toggleStar(String(selectedMail._id)).then(() =>
-                              queryClient.invalidateQueries({ queryKey: ["mail-list"] })
-                            )
-                          }
-                          className="rounded-full border border-[#29323d] p-2 text-gray-300 hover:text-yellow-300"
-                        >
-                          <Pin className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <p className="whitespace-pre-wrap text-sm text-gray-200">{selectedMail.body || "No message body."}</p>
-                    </div>
-                    <div className="rounded-2xl border border-[#29323d] bg-[#0d131a] p-4">
-                      <h4 className="mb-3 text-sm font-semibold text-gray-100">Attachments</h4>
-                      {selectedMail.attachments?.length ? (
-                        <div className="space-y-2">
-                          {selectedMail.attachments.map((file: any, index: number) => (
-                            <a
-                              key={`${selectedMail._id}-${index}`}
-                              href={file.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center gap-3 rounded-xl border border-[#29323d] px-3 py-2 hover:border-blue-500/60"
-                            >
-                              <Paperclip className="h-4 w-4 text-blue-300" />
-                              <span className="truncate text-sm text-gray-100">{file.fileName || "Attachment"}</span>
-                            </a>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-500">No attachments.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {renderContactPanel()}
+          <div className="ib-workspace ib-mail-workspace">
+            <aside className="ib-mail-folders">
+              <button className="nv-button ib-new-mail" onClick={openNewMail}><Plus size={14}/>New email</button>
+              <nav aria-label="Email folders">
+                {([{ id: "inbox", label: "Inbox", icon: Inbox }, { id: "starred", label: "Starred", icon: Star }, { id: "sent", label: "Sent", icon: Send }, { id: "draft", label: "Drafts", icon: FilePenLine }] as const).map(folder => <button key={folder.id} className={emailFolder === folder.id ? "selected" : ""} aria-pressed={emailFolder === folder.id} onClick={() => changeMailFolder(folder.id)}><folder.icon size={13}/><span>{folder.label}</span>{emailFolder === folder.id && <small>{mailsResponse?.data?.pagination?.total ?? mails.length}</small>}</button>)}
+              </nav>
+              <nav className="ib-unavailable-folders" aria-label="Additional mail folders"><button disabled title="Snooze is not available yet"><Clock size={13}/><span>Snoozed</span></button><button disabled title="Scheduled delivery is not available yet"><CalendarDays size={13}/><span>Scheduled</span></button><button disabled title="Trash recovery is not available yet"><Trash2 size={13}/><span>Trash</span></button></nav>
+              <div className="ib-mail-account"><Mail size={15}/><div><strong>{session?.user?.email || "Admin mailbox"}</strong><span>NOVYA workspace</span></div></div>
+            </aside>
+            <section className="ib-mail-list" aria-label="Email list">
+              <label className="ib-mail-search"><Search size={13}/><input aria-label="Search mail" placeholder="Search mail..." value={mailSearch} onChange={event => { setMailSearch(event.target.value); setMailPage(1); }}/></label>
+              <div className="ib-mail-list-toolbar"><button aria-label="Refresh mail" onClick={() => refetchMails()}><RefreshCw size={13}/></button><span>{mailsResponse?.data?.pagination?.total ?? 0} messages</span><button aria-label="Previous mail page" disabled={mailPage === 1} onClick={() => setMailPage(mailPage - 1)}><ChevronLeft size={13}/></button><button aria-label="Next mail page" disabled={mailPage >= (mailsResponse?.data?.pagination?.totalPages || 1)} onClick={() => setMailPage(mailPage + 1)}><ChevronRight size={13}/></button></div>
+              <div className="ib-mail-filters" aria-label="Mail filters">{(["all", "unread"] as const).map(filter => <button key={filter} aria-pressed={mailFilter === filter} className={mailFilter === filter ? "selected" : ""} onClick={() => setMailFilter(filter)}>{filter === "all" ? "All messages" : "Unread"}</button>)}</div>
+              <div className="ib-mail-items"><QueryState loading={mailsLoading} error={mailsError ? "Unable to load emails." : undefined} retry={() => refetchMails()}/>{!mailsLoading && !mailsError && !visibleMails.length && <div className="ib-empty"><Mail size={24}/><strong>No emails found</strong><p>Try another folder or search.</p></div>}{visibleMails.map(mail => {
+                const actor = emailFolder === "sent" || emailFolder === "draft" ? mail.to?.[0]?.name || mail.toEmails?.[0] : mail.from?.name || mail.from?.email;
+                const unread = !(mail.isReadBy || []).some((id: any) => String(id?._id || id) === String(currentUserId));
+                return <button className={`ib-mail-item ${String(selectedMail?._id) === String(mail._id) ? "selected" : ""}`} key={mail._id} onClick={() => setSelectedMailId(String(mail._id))}><div><strong>{actor || "Email"}</strong><time>{formatLastTime(mail.createdAt)}</time></div><h3>{mail.subject || "(No subject)"}</h3><p>{mail.body || "No preview available"}</p>{unread && <span className="ib-unread-dot" aria-label="Unread"/>}</button>;
+              })}</div>
+            </section>
+            <section className="ib-mail-reader" aria-label="Email reading pane">
+              <div className="ib-mail-actions"><span>{emailFolder === "draft" ? "Draft" : "Message"}</span>{selectedMail && <><button onClick={toggleMailStar} aria-label="Toggle starred email"><Star size={13}/>Star</button><button onClick={() => prepareMailAction("reply")}><Reply size={13}/>Reply</button><button onClick={() => prepareMailAction("forward")}><Forward size={13}/>Forward</button></>}</div>
+              <div className="ib-mail-body">{!selectedMail ? <div className="ib-empty"><Mail size={28}/><strong>Select an email</strong><p>Pick a message from the list or compose a new one.</p></div> : <><h2>{selectedMail.subject || "(No subject)"}</h2><div className="ib-mail-sender"><span className="ib-sender-avatar">{getInitials(selectedMail.from?.name || "U")}</span><div><strong>{selectedMail.from?.name || "Unknown sender"}</strong><p>{selectedMail.from?.email || ""}</p><small>to {selectedMail.toEmails?.join(", ") || "you"}</small></div><time>{formatLastTime(selectedMail.createdAt)}</time></div><p className="ib-mail-message">{selectedMail.body || "No message body."}</p>{selectedMail.attachments?.length > 0 && <section className="ib-attachment-panel"><h3>{selectedMail.attachments.length} attachments</h3><div>{selectedMail.attachments.map((file: any, index: number) => <a key={index} href={file.url} target="_blank" rel="noreferrer"><span>{getFileTypeLabel(file.fileName || "file")}</span><strong>{file.fileName || "Attachment"}</strong><Download size={13}/></a>)}</div></section>}<section className="ib-kora-panel"><h3><Sparkles size={13}/>Kora assistance</h3><p>Review the message and attachments with Kora before preparing your next action.</p><Link href="/kora" className="nv-button">Open Kora<ChevronRight size={12}/></Link></section><div className="ib-reply-bar"><button onClick={() => prepareMailAction("reply")}><Reply size={13}/>Reply</button><button onClick={() => prepareMailAction("forward")}><Forward size={13}/>Forward</button></div></>}</div>
+            </section>
           </div>
         )}
       </div>
@@ -1520,7 +1429,7 @@ export function InboxWorkspace({
             value={noteDraft}
             onChange={(event) => setNoteDraft(event.target.value)}
             rows={5}
-            className="w-full rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2 text-sm text-gray-100 outline-none"
+            className="w-full rounded-xl border border-[#29323d] bg-[#0b1117] px-3 py-2 text-sm text-gray-100 outline-none"
             placeholder="Write a private note about this contact..."
           />
           <div className="flex justify-end gap-2">
@@ -1631,7 +1540,7 @@ function QuickIconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="rounded-full border border-[#29323d] bg-[#0d131a] p-2 text-gray-400 transition hover:border-blue-500/60 hover:text-white"
+      className="rounded-full border border-[#29323d] bg-[#0b1117] p-2 text-gray-400 transition hover:border-blue-500/60 hover:text-white"
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -1659,7 +1568,7 @@ function EmojiPicker({
   const categoryLabel = EMOJI_CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "";
 
   return (
-    <div className="absolute bottom-14 left-0 z-30 w-80 overflow-hidden rounded-2xl border border-[#29323d] bg-[#0d131a] shadow-2xl">
+    <div className="absolute bottom-14 left-0 z-30 w-80 overflow-hidden rounded-2xl border border-[#29323d] bg-[#0b1117] shadow-2xl">
       {/* Search + delete row */}
       <div className="flex items-center gap-2 border-b border-[#29323d] px-3 py-2">
         <Search className="h-4 w-4 shrink-0 text-gray-500" />
@@ -1781,9 +1690,9 @@ function ActionIcon({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 rounded-xl border border-[#182233] p-2 text-gray-300 hover:border-blue-500/60 hover:text-white transition-colors"
+      className="flex flex-col items-center gap-1.5 rounded-xl border border-[#29343e] p-2 text-gray-300 hover:border-blue-500/60 hover:text-white transition-colors"
     >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#26354b] bg-[#141c25]">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#34414e] bg-[#151d25]">
         <Icon className="h-3.5 w-3.5" />
       </div>
       <span className="text-[9px] leading-tight text-center">{label}</span>
@@ -1936,7 +1845,7 @@ function ComposeMailDialog({
               value={body}
               onChange={(event) => setBody(event.target.value)}
               rows={8}
-              className="w-full rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2 text-sm text-gray-100 outline-none"
+              className="w-full rounded-xl border border-[#29323d] bg-[#0b1117] px-3 py-2 text-sm text-gray-100 outline-none"
               placeholder="Write your email..."
             />
           </div>
@@ -1953,10 +1862,10 @@ function ComposeMailDialog({
             className="hidden"
             onChange={(event) => setAttachment(event.target.files?.[0] || null)}
           />
-          <div className="flex items-center justify-between rounded-xl border border-[#29323d] bg-[#0d131a] px-3 py-2">
+          <div className="flex items-center justify-between rounded-xl border border-[#29323d] bg-[#0b1117] px-3 py-2">
             <div className="flex items-center gap-2">
               <QuickIconButton icon={Paperclip} label="Attach file" onClick={() => attachmentInputRef.current?.click()} />
-              <QuickIconButton icon={Image} label="Attach image" onClick={() => imageInputRef.current?.click()} />
+              <QuickIconButton icon={ImageIcon} label="Attach image" onClick={() => imageInputRef.current?.click()} />
             </div>
             {attachment ? (
               <div className="flex items-center gap-2 text-xs text-gray-300">

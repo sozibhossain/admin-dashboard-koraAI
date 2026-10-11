@@ -2,17 +2,16 @@
 import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { AuthCard } from "@/components/auth-card";
 import { authApi } from "@/lib/api";
 
 function OTPForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
-  const type = searchParams.get("type") || "reset";
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
@@ -59,25 +58,9 @@ function OTPForm() {
   }
 
   return (
-    <div className="bg-[#0a1628] border border-[#1e2d40] rounded-2xl p-8 shadow-2xl">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-white">KoraAI</h1>
-          <p className="text-xs text-gray-500">Admin Dashboard</p>
-        </div>
-      </div>
-
-      <h2 className="text-2xl font-bold text-white mb-1">Verify OTP</h2>
-      <p className="text-gray-400 text-sm mb-2">
-        Enter the 6-digit code sent to
-      </p>
-      <p className="text-blue-400 text-sm font-medium mb-6">{email}</p>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex gap-2 justify-center">
+    <AuthCard title="Check your email" description={<>Enter the 6-digit verification code sent to<span className="auth-email">{email || "your admin email"}</span></>}>
+      <form onSubmit={handleSubmit} className="auth-form">
+        <div className="auth-otp" role="group" aria-label="Verification code">
           {otp.map((digit, i) => (
             <input
               key={i}
@@ -88,27 +71,28 @@ function OTPForm() {
               value={digit}
               onChange={(e) => handleChange(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
-              className="w-12 h-12 text-center text-lg font-bold rounded-lg border border-[#2a3547] bg-[#0d1526] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              aria-label={`Digit ${i + 1} of 6`}
+              autoComplete={i === 0 ? "one-time-code" : "off"}
             />
           ))}
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="auth-submit" disabled={loading}>
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</> : "Verify OTP"}
         </Button>
       </form>
 
-      <Link href="/forgot-password" className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 mt-6">
+      <Link href="/forgot-password" className="auth-back">
         <ArrowLeft className="w-4 h-4" />
         Back
       </Link>
-    </div>
+    </AuthCard>
   );
 }
 
 export default function VerifyOTPPage() {
   return (
-    <Suspense fallback={<div className="text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="auth-loading" role="status">Loading...</div>}>
       <OTPForm />
     </Suspense>
   );

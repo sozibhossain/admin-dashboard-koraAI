@@ -3,12 +3,13 @@ import { useEffect, useState } from "react";
 import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isAdminRole } from "@/lib/roles";
 import Link from "next/link";
+import { AuthCard } from "@/components/auth-card";
 
 const loginErrorMessages: Record<string, string> = {
   credentials: "Invalid email or password.",
@@ -118,23 +119,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-[#0a1628] border border-[#1e2d40] rounded-2xl p-8 shadow-2xl">
-      {/* Logo */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-white">KoraAI</h1>
-          <p className="text-xs text-gray-500">Admin Dashboard</p>
-        </div>
-      </div>
-
-      <h2 className="text-2xl font-bold text-white mb-1">Welcome back</h2>
-      <p className="text-gray-400 text-sm mb-6">Sign in to your admin account</p>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
+    <AuthCard title="Welcome back" description="Sign in to your NOVYA admin workspace.">
+      <form onSubmit={handleSubmit} className="auth-form">
+        <div className="auth-field">
           <Label htmlFor="email">Email Address</Label>
           <Input
             id="email"
@@ -150,14 +137,14 @@ export default function LoginPage() {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
+        <div className="auth-field">
+          <div className="auth-field-heading">
             <Label htmlFor="password">Password</Label>
-            <Link href="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300">
+            <Link href="/forgot-password" className="auth-link">
               Forgot password?
             </Link>
           </div>
-          <div className="relative">
+          <div className="auth-password">
             <Input
               id="password"
               type={showPwd ? "text" : "password"}
@@ -174,7 +161,9 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              aria-label={showPwd ? "Hide password" : "Show password"}
+              aria-pressed={showPwd}
+              className="auth-password-toggle"
             >
               {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -182,12 +171,12 @@ export default function LoginPage() {
         </div>
 
         {formError ? (
-          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <div className="auth-error" role="alert">
             {formError}
           </div>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="auth-submit" disabled={loading}>
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -199,9 +188,6 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className="text-center text-xs text-gray-500 mt-6">
-        Protected by KoraAI Security
-      </p>
-    </div>
+    </AuthCard>
   );
 }

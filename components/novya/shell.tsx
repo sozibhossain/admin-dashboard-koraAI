@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 import "@/app/kora.css";
+import "@/app/live-view.css";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ConnectionStatus } from "./connection-status";
 
@@ -7,7 +8,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { LayoutDashboard, Sparkles, Radio, ShieldCheck, CheckSquare, Inbox, CalendarDays, Building2, Users, Activity, Workflow, Settings, Menu, X, Search, ChevronRight, ArrowUp, LogOut, UserRound } from "lucide-react";
+import { LayoutDashboard, Sparkles, Radio, ShieldCheck, CheckSquare, Inbox, CalendarDays, Building2, Users, Activity, Workflow, Settings, Menu, X, Search, ChevronRight, ChevronLeft, ArrowUp, LogOut, UserRound } from "lucide-react";
 import { Folder, FileSearch, Briefcase, Zap, Brain, BookOpen, Upload, History, MessageSquare, Network, CreditCard, UserPlus, LogIn, Clock, ChartNoAxesCombined, LockKeyhole, Palette, Plug, Database, SlidersHorizontal, Bell, Globe, type LucideIcon } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { KoraRecentConversations } from "./kora-folders";
@@ -61,25 +62,26 @@ export function NovyaShell({ children }: {
     const root = path.split("/")[1];
     const [koraSearch, setKoraSearch] = useState(false);
     const koraSection = path.split("/")[2];
-    const koraTitle = ["knowledge", "brain", "sources"].includes(koraSection) ? "Kora · Brain" : koraSection && koraSection !== "conversations" ? `Kora · ${subnavigation.kora.find(([, href]) => href === `/kora/${koraSection}`)?.[0] ?? "Kora"}` : "Kora";
-    const group = subnavigation[root];
+    const teamTitle = koraSection === "members" && path.split("/")[3] ? "Member Record" : subnavigation.team.find(([,href])=>href === `/team/${koraSection}`)?.[0] ?? "Team";
+    const koraTitle = ["knowledge", "brain", "sources"].includes(koraSection) ? "Kora \u00b7 Brain" : koraSection && koraSection !== "conversations" ? `Kora \u00b7 ${subnavigation.kora.find(([, href]) => href === `/kora/${koraSection}`)?.[0] ?? "Kora"}` : "Kora";
+    const group = ["live-view", "tasks", "inbox"].includes(root) ? undefined : subnavigation[root];
     const ask = useMutation({ mutationFn: () => novya.post<{
             conversation: {
                 _id: string;
             };
         }>("/kora/chat", { message: prompt }), onSuccess: r => { setChat(false); setPrompt(""); router.push(`/kora/conversations/${r.data.conversation._id}`); } });
     const current = navigation.find(n => path === n.href || path.startsWith(n.href + "/"));
-    return <div className={`nv-shell ${root === "kora" ? "kr-shell" : path === "/dashboard" ? "ov-shell" : ""}`}>
+    return <div className={`nv-shell ${root === "team" ? "tm-shell" : root === "calendar" ? "cl-shell" : root === "tasks" ? "tk-shell" : root === "inbox" ? "ib-shell" : root === "kora" ? "kr-shell" : root === "live-view" ? "lv-shell" : path === "/dashboard" ? "ov-shell" : ""}`}>
     {mobile && <button className="nv-mobile-backdrop" aria-label="Close navigation" onClick={() => setMobile(false)}/>}
     <aside className={`nv-sidebar ${mobile ? "nv-sidebar-open" : ""}`}><Link className="nv-brand" href="/dashboard" onClick={() => setMobile(false)}><span className="nv-brand-mark">N</span>NOVYA</Link><button className="nv-mobile-close" aria-label="Close menu" onClick={() => setMobile(false)}><X size={20}/></button>
-      {group && <Link href="/dashboard" className="nv-back-admin" onClick={() => setMobile(false)}>‹　Back to Admin</Link>}
+      {group && <Link href="/dashboard" className="nv-back-admin flex items-center gap-2" onClick={() => setMobile(false)}><ChevronLeft size={14} aria-hidden="true"/><span>Back to Admin</span></Link>}
       <nav aria-label={group ? `${root} navigation` : "Main navigation"}>{group ? group.filter(([, href]) => root !== "kora" || !["/kora/knowledge", "/kora/sources"].includes(href)).map(([label, href]) => <Link key={href} href={href} onClick={() => setMobile(false)} className={path === href || (href !== `/${root}` && path.startsWith(href + "/")) || (href === "/kora/brain" && ["knowledge", "sources"].includes(koraSection)) ? "nv-nav-active" : ""}><SubnavIcon href={href}/><span>{label}</span></Link>) : navigation.map(n => <Link key={n.href} href={n.href} onClick={() => setMobile(false)} className={current?.href === n.href ? "nv-nav-active" : ""}><n.icon size={17}/><span>{n.label}</span></Link>)}</nav>
       {root==="kora"&&<KoraRecentConversations onNavigate={()=>setMobile(false)}/>}
       <Link className={`nv-settings-link ${root === "settings" ? "nv-nav-active" : ""}`} href="/settings" onClick={() => setMobile(false)}><Settings size={17}/>Settings</Link>
       <div className="nv-sidebar-footer"><span className="nv-status-dot"/>Admin platform</div>
     </aside>
-    <div className="nv-main"><header className="nv-topbar"><button className="nv-menu-button" aria-label="Open navigation" onClick={() => setMobile(true)}><Menu size={20}/></button><div className="nv-breadcrumb">{root === "kora" ? <span className="kr-topbar-title">{koraTitle}</span> : <>Admin <ChevronRight size={13}/></>}{root !== "kora" && <strong>{root === "settings" ? "Settings" : current?.label ?? "Profile"}</strong>}</div><form className={`nv-global-search ${root === "kora" && koraSearch ? "kr-search-open" : ""}`} onSubmit={e => { e.preventDefault(); if (search.trim())
-        router.push(`/management/organizations?q=${encodeURIComponent(search.trim())}`); }}><Search size={14}/><input aria-label="Search organizations" placeholder="Search organizations…" value={search} onChange={e => setSearch(e.target.value)}/></form>{root === "kora" && <button className="kr-topbar-search" aria-label="Toggle organization search" aria-expanded={koraSearch} onClick={() => setKoraSearch(!koraSearch)}><Search size={16}/></button>}<span className="nv-scope" title={context.data?.data.role}>{context.data?.data.role??"Admin"} · {context.data?.data.environment??"Context loading"}</span><CreateLauncher ask={mode=>{setChatMode(mode);setChat(true);}}/><NotificationBell /><DropdownMenu modal={false}><DropdownMenuTrigger asChild><button type="button" className="nv-account-trigger" aria-label="Account menu"><span className="nv-avatar">{session?.user?.name?.slice(0, 1) ?? "A"}</span>{root === "kora" && <><span>{session?.user?.name?.split(" ")[0] ?? "Admin"}</span><ChevronRight size={11}/></>}</button></DropdownMenuTrigger><DropdownMenuContent align="end" sideOffset={10} collisionPadding={12}><DropdownMenuLabel>{session?.user?.name ?? "Administrator"}</DropdownMenuLabel><DropdownMenuSeparator/><DropdownMenuItem asChild><Link href="/profile"><UserRound size={14}/>My profile</Link></DropdownMenuItem><DropdownMenuItem onSelect={() => signOut({ callbackUrl: "/login" })}><LogOut size={14}/>Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu></header>
+    <div className="nv-main"><header className="nv-topbar"><button className="nv-menu-button" aria-label="Open navigation" onClick={() => setMobile(true)}><Menu size={20}/></button><div className="nv-breadcrumb">{root === "kora" ? <span className="kr-topbar-title">{koraTitle}</span> : <>Admin <ChevronRight size={13}/></>}{root !== "kora" && <strong>{root === "team" ? teamTitle : root === "settings" ? "Settings" : current?.label ?? "Profile"}</strong>}</div>{root === "live-view" && <nav className="lv-top-tabs" aria-label="Live View sections">{subnavigation["live-view"].map(([label, href]) => <Link href={href} key={href} className={path === href || (href !== "/live-view" && path.startsWith(href + "/")) ? "selected" : ""}>{label === "All Conversations" ? "Conversations" : label === "Organizations" ? "All orgs" : label}</Link>)}</nav>}<form className={`nv-global-search ${root === "kora" && koraSearch ? "kr-search-open" : ""}`} onSubmit={e => { e.preventDefault(); if (search.trim())
+        router.push(`/management/organizations?q=${encodeURIComponent(search.trim())}`); }}><Search size={14}/><input aria-label="Search organizations" placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)}/></form>{root === "kora" && <button className="kr-topbar-search" aria-label="Toggle organization search" aria-expanded={koraSearch} onClick={() => setKoraSearch(!koraSearch)}><Search size={16}/></button>}<span className="nv-scope" title={context.data?.data.role}>{context.data?.data.role??"Admin"}{ "\u00b7" } {context.data?.data.environment??"Context loading"}</span>{root !== "calendar" && <CreateLauncher ask={mode=>{setChatMode(mode);setChat(true);}}/>}<NotificationBell /><DropdownMenu modal={false}><DropdownMenuTrigger asChild><button type="button" className="nv-account-trigger" aria-label="Account menu"><span className="nv-avatar">{session?.user?.name?.slice(0, 1) ?? "A"}</span>{["kora", "live-view"].includes(root) && <><span>{session?.user?.name?.split(" ")[0] ?? "Admin"}</span><ChevronRight size={11}/></>}</button></DropdownMenuTrigger><DropdownMenuContent align="end" sideOffset={10} collisionPadding={12}><DropdownMenuLabel>{session?.user?.name ?? "Administrator"}</DropdownMenuLabel><DropdownMenuSeparator/><DropdownMenuItem asChild><Link href="/profile"><UserRound size={14}/>My profile</Link></DropdownMenuItem><DropdownMenuItem onSelect={() => signOut({ callbackUrl: "/login" })}><LogOut size={14}/>Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu></header>
       <div className="nv-body"><main className="nv-content"><ConnectionStatus/>{children}</main></div>
     </div>
     <Dialog open={chat} onOpenChange={setChat}>
@@ -97,13 +99,11 @@ export function NovyaShell({ children }: {
         </div>
         <form className="nv-kora-dialog-compose" onSubmit={e => { e.preventDefault(); if (prompt.trim()) ask.mutate(); }}>
           <label htmlFor="kora-launcher-message">Your message</label>
-          <textarea id="kora-launcher-message" className="nv-input" placeholder="Ask Kora about the platform…" rows={4} value={prompt} onChange={e => setPrompt(e.target.value)}/>
+          <textarea id="kora-launcher-message" className="nv-input" placeholder="Ask Kora about the platform..." rows={4} value={prompt} onChange={e => setPrompt(e.target.value)}/>
           {ask.error && <p className="nv-error-text" role="alert">{errorMessage(ask.error)}</p>}
-          <div className="nv-kora-dialog-actions"><span>Review your message before sending.</span><button className="nv-button nv-button-primary" disabled={!prompt.trim() || ask.isPending}><ArrowUp size={16}/>{ask.isPending ? "Thinking…" : "Send message"}</button></div>
+          <div className="nv-kora-dialog-actions"><span>Review your message before sending.</span><button className="nv-button nv-button-primary" disabled={!prompt.trim() || ask.isPending}><ArrowUp size={16}/>{ask.isPending ? "Thinking..." : "Send message"}</button></div>
         </form>
       </DialogContent>
     </Dialog>
   </div>;
 }
-
-

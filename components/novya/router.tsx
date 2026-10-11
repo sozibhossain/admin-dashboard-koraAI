@@ -1,7 +1,8 @@
 "use client";
+import { TeamWorkspace } from "./team-workspace";
 import { resources } from "@/lib/novya-pages";
 import { ResourceList, ResourceDetail, ResourceForm } from "./resource";
-import { ModuleOverview, RecruitingPage, HealthRiskPage, BillingPage, SystemHealthPage } from "./module-overview";
+import { ModuleOverview, HealthRiskPage, BillingPage, SystemHealthPage } from "./module-overview";
 import { TasksPage } from "./tasks";
 import { WorkflowsPage } from "./workflows";
 import { WorkflowRuns } from "./workflow-runs";
@@ -9,13 +10,13 @@ import { SettingsPage } from "./settings";
 import { KoraChat, KoraBrain, KoraSources } from "./kora";
 import { CalendarPage } from "./calendar";
 import { ProfilePage } from "./profile";
-import { LiveSessionPage } from "./live-session";
+import { LiveSessionPage, LiveInterventionPage } from "./live-session";
+import { LiveOverview, LiveConversations, LiveOrganizations } from "./live-view";
 import { OrganizationCreate } from "./organization-form";
 import { LiveOrganization } from "./live-organization";
 import { LiveChannels } from "./live-channels";
 import { LiveChannelPage } from "./live-channel";
 import { OrganizationEdit } from "./organization-edit";
-import { PerformancePage,AbsencePage,OnboardingPage } from "./team-pages";
 import { KoraFolders } from "./kora-folders";
 import { ApprovalList } from "./approval-list";
 import { CustomerPages } from "./customer-pages";
@@ -27,6 +28,11 @@ export function NovyaPage({ parts }: {
     parts: string[];
 }) {
     const root = parts[0];
+    if(root === "team")return <TeamWorkspace key={parts.join("/")} parts={parts.slice(1)}/>;
+    if(root==="live-view"&&parts.length===1)return <LiveOverview/>;
+    if(root==="live-view"&&parts[1]==="conversations"&&!parts[2])return <LiveConversations/>;
+    if(root==="live-view"&&parts[1]==="organizations"&&!parts[2])return <LiveOrganizations/>;
+    if(root==="live-view"&&parts[1]==="conversations"&&parts[2]&&parts[3]==="intervention")return <LiveInterventionPage key={parts[2]} id={parts[2]}/>;
     if(root==="management"&&parts.length===1)return <ManagementPage mode="overview"/>;
     if(root==="management"&&["health-risk","plans-billing","activity"].includes(parts[1]))return <ManagementPage key={parts[1]} mode={parts[1] as "health-risk"|"plans-billing"|"activity"}/>;
     if(root==="management"&&parts[1]==="organizations"&&!parts[2])return <ManagementPage mode="organizations"/>;
@@ -39,7 +45,6 @@ export function NovyaPage({ parts }: {
     if (root === "kora" && parts[1] === "actions") return <KoraActions key={parts.join("/")} id={parts[2]}/>;
     if (root === "kora" && parts[1] === "history") return <KoraHistory/>;
     if (root === "kora" && parts[1] === "knowledge") return <KoraKnowledge key={parts.join("/")} id={parts[2] === "create" ? undefined : parts[2]} form={parts[2] === "create" || parts[3] === "edit"}/>;
-    if(parts.length===2&&root==="team"){if(parts[1]==="performance")return <PerformancePage/>;if(parts[1]==="time-absence")return <AbsencePage/>;if(parts[1]==="onboarding")return <OnboardingPage/>;}
     if(root==="approvals"&&parts[1]==="all"&&!parts[2])return <ApprovalList/>;
     if (root === "management" && parts[1] === "organizations" && parts[2] && parts[3] === "edit") return <OrganizationEdit id={parts[2]}/>;
     if (root === "live-view" && parts[1] === "channels" && parts[2]) return <LiveChannelPage channel={parts[2]}/>;
@@ -66,14 +71,12 @@ export function NovyaPage({ parts }: {
         return <KoraBrain />;
     if (root === "kora" && parts[1] === "sources")
         return <KoraSources />;
-    if (["management", "team", "approvals", "live-view"].includes(root) && parts.length === 1)
+    if (["management", "approvals", "live-view"].includes(root) && parts.length === 1)
         return <ModuleOverview module={root as "management" | "team" | "approvals" | "live-view"}/>;
     if (root === "management" && parts[1] === "health-risk")
         return <HealthRiskPage />;
     if (root === "management" && parts[1] === "plans-billing")
         return <BillingPage />;
-    if (root === "team" && parts[1] === "recruiting")
-        return <RecruitingPage />;
     const isApproval = root === "approvals";
     const base = isApproval ? "approvals" : parts.slice(0, 2).join("/");
     const resource = resources[isApproval ? "approvals/all" : base];

@@ -2,11 +2,12 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Sparkles, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { AuthCard } from "@/components/auth-card";
 import { authApi } from "@/lib/api";
 
 function ResetForm() {
@@ -39,25 +40,14 @@ function ResetForm() {
   }
 
   return (
-    <div className="bg-[#0a1628] border border-[#1e2d40] rounded-2xl p-8 shadow-2xl">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-white">KoraAI</h1>
-          <p className="text-xs text-gray-500">Admin Dashboard</p>
-        </div>
-      </div>
-
-      <h2 className="text-2xl font-bold text-white mb-1">Reset Password</h2>
-      <p className="text-gray-400 text-sm mb-6">Create a strong new password for your account.</p>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>New Password</Label>
-          <div className="relative">
+    <AuthCard title="Set a new password" description="Create a new password to secure your admin account.">
+      <form onSubmit={handleSubmit} className="auth-form">
+        <div className="auth-field">
+          <Label htmlFor="new-password">New password</Label>
+          <div className="auth-password">
             <Input
+              id="new-password"
+              autoComplete="new-password"
               type={showPwd ? "text" : "password"}
               placeholder="Enter new password"
               value={password}
@@ -67,15 +57,21 @@ function ResetForm() {
               className="pr-10"
             />
             <button type="button" onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+              aria-label={showPwd ? "Hide password" : "Show password"}
+              aria-pressed={showPwd}
+              className="auth-password-toggle">
               {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Confirm New Password</Label>
+        <p className="auth-hint">Use at least 6 characters.</p>
+
+        <div className="auth-field">
+          <Label htmlFor="confirm-password">Confirm new password</Label>
           <Input
+            id="confirm-password"
+            autoComplete="new-password"
             type="password"
             placeholder="Confirm new password"
             value={confirmPassword}
@@ -84,22 +80,22 @@ function ResetForm() {
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="auth-submit" disabled={loading}>
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Resetting...</> : "Reset Password"}
         </Button>
       </form>
 
-      <Link href="/login" className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 mt-6">
+      <Link href="/login" className="auth-back">
         <ArrowLeft className="w-4 h-4" />
         Back to Login
       </Link>
-    </div>
+    </AuthCard>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="auth-loading" role="status">Loading...</div>}>
       <ResetForm />
     </Suspense>
   );
