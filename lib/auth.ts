@@ -17,6 +17,11 @@ function mapAuthErrorCode(message?: string) {
       return "wrong_password";
     case "Email not verified":
       return "email_not_verified";
+    case "Account is blocked":
+      return "account_blocked";
+    case "Valid fresh second factor required":
+    case "Second factor already used":
+      return "second_factor_required";
     default:
       return "invalid_credentials";
   }
@@ -29,6 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        mfaCode: { label: "Authenticator code", type: "text" },
       },
       async authorize(credentials) {
         const email = String(credentials?.email ?? "").trim();
@@ -47,7 +53,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               body: JSON.stringify({
                 email,
                 password,
+                mfaCode: String(credentials?.mfaCode ?? "").trim(),
               }),
+              signal: AbortSignal.timeout(15_000),
             }
           );
 
@@ -108,6 +116,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.accessToken = token.accessToken as string;
       session.refreshToken = token.refreshToken as string;
       return session;
+    },
+  },
+  events: {
+    async signOut(message) {
+      const token = "token" in message ? message.token?.accessToken : undefined;
+      if (!token) return;
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(5_000),
+        });
+      } catch {
+        // Local sign-out must still finish if the API is unavailable.
+      }
     },
   },
   pages: {

@@ -10,22 +10,49 @@ const SOCKET_URL = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000/a
   .replace(/\/+$/, "");
 
 let sharedSocket: Socket | null = null;
+const subscriptions = new WeakMap<Socket, number>();
 
-const getSocket = () => {
-  if (sharedSocket && sharedSocket.connected) return sharedSocket;
-  if (sharedSocket) return sharedSocket;
-  sharedSocket = io(SOCKET_URL, {
+export function createAuthenticatedSocket(token: string, url = SOCKET_URL) {
+  if (!token) throw new Error("An authenticated session is required for realtime updates.");
+  return io(url, {
+    auth: { token },
     transports: ["websocket", "polling"],
-    autoConnect: true,
+    autoConnect: false,
     reconnection: true,
   });
+}
+
+const getSocket = (token: string) => {
+  if (sharedSocket && (sharedSocket.auth as { token?: string }).token !== token) {
+    sharedSocket.disconnect();
+    sharedSocket = null;
+  }
+  if (sharedSocket && sharedSocket.connected) return sharedSocket;
+  if (sharedSocket) return sharedSocket;
+  sharedSocket = createAuthenticatedSocket(token);
   return sharedSocket;
 };
 
+const subscribe = (token: string) => {
+  const socket = getSocket(token);
+  subscriptions.set(socket, (subscriptions.get(socket) ?? 0) + 1);
+  socket.connect();
+  return { socket, release: () => {
+    const remaining = (subscriptions.get(socket) ?? 1) - 1;
+    subscriptions.set(socket, remaining);
+    if (remaining === 0) {
+      socket.disconnect();
+      if (sharedSocket === socket) sharedSocket = null;
+    }
+  } };
+};
+
+type InboxPayload = Record<string, unknown>;
+
 type InboxHandlers = {
-  onNewMessage?: (payload: any) => void;
-  onMessageRead?: (payload: any) => void;
-  onNewConversation?: (payload: any) => void;
+  onNewMessage?: (payload: InboxPayload) => void;
+  onMessageRead?: (payload: InboxPayload) => void;
+  onNewConversation?: (payload: InboxPayload) => void;
 };
 
 /**
@@ -34,7 +61,8 @@ type InboxHandlers = {
  */
 export function useInboxSocket(activeChatId: string | null, handlers: InboxHandlers) {
   const { data: session } = useSession();
-  const userId = (session?.user as any)?._id;
+  const userId = session?.user?._id;
+  const token = session?.accessToken;
   const handlersRef = useRef(handlers);
 
   // Always read latest handler refs without re-binding listeners.
@@ -44,15 +72,15 @@ export function useInboxSocket(activeChatId: string | null, handlers: InboxHandl
 
   // Join user room when we know who we are.
   useEffect(() => {
-    if (!userId) return;
-    const socket = getSocket();
+    if (!userId || !token) return;
+    const { socket, release } = subscribe(token);
     const join = () => socket.emit("join-user-room", { _id: userId });
     if (socket.connected) join();
     socket.on("connect", join);
 
-    const onNewMessage = (payload: any) => handlersRef.current.onNewMessage?.(payload);
-    const onMessageRead = (payload: any) => handlersRef.current.onMessageRead?.(payload);
-    const onNewConversation = (payload: any) =>
+    const onNewMessage = (payload: InboxPayload) => handlersRef.current.onNewMessage?.(payload);
+    const onMessageRead = (payload: InboxPayload) => handlersRef.current.onMessageRead?.(payload);
+    const onNewConversation = (payload: InboxPayload) =>
       handlersRef.current.onNewConversation?.(payload);
 
     socket.on("inbox:new-message", onNewMessage);
@@ -64,13 +92,14 @@ export function useInboxSocket(activeChatId: string | null, handlers: InboxHandl
       socket.off("inbox:new-message", onNewMessage);
       socket.off("inbox:read", onMessageRead);
       socket.off("inbox:new-conversation", onNewConversation);
+      release();
     };
-  }, [userId]);
+  }, [userId, token]);
 
   // Join chat room when a conversation is selected.
   useEffect(() => {
-    if (!activeChatId) return;
-    const socket = getSocket();
+    if (!activeChatId || !userId || !token) return;
+    const socket = getSocket(token);
     const join = () => socket.emit("join-chat", { _id: activeChatId });
     if (socket.connected) join();
     socket.on("connect", join);
@@ -78,16 +107,17 @@ export function useInboxSocket(activeChatId: string | null, handlers: InboxHandl
       socket.emit("leave-chat", activeChatId);
       socket.off("connect", join);
     };
-  }, [activeChatId]);
+  }, [activeChatId, userId, token]);
 }
 
 /**
  * Generic socket listener that joins the user room and subscribes to a single
  * event. Used by NotificationBell and other one-off realtime widgets.
  */
-export function useSocketEvent<T = any>(event: string, handler: (payload: T) => void) {
+export function useSocketEvent<T = unknown>(event: string, handler: (payload: T) => void) {
   const { data: session } = useSession();
-  const userId = (session?.user as any)?._id;
+  const userId = session?.user?._id;
+  const token = session?.accessToken;
   const handlerRef = useRef(handler);
 
   useEffect(() => {
@@ -95,8 +125,8 @@ export function useSocketEvent<T = any>(event: string, handler: (payload: T) => 
   }, [handler]);
 
   useEffect(() => {
-    if (!userId) return;
-    const socket = getSocket();
+    if (!userId || !token) return;
+    const { socket, release } = subscribe(token);
     const join = () => socket.emit("join-user-room", { _id: userId });
     if (socket.connected) join();
     socket.on("connect", join);
@@ -105,6 +135,7 @@ export function useSocketEvent<T = any>(event: string, handler: (payload: T) => 
     return () => {
       socket.off("connect", join);
       socket.off(event, wrapped);
+      release();
     };
-  }, [userId, event]);
+  }, [userId, token, event]);
 }

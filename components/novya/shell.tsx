@@ -3,6 +3,7 @@ import "@/app/kora.css";
 import "@/app/live-view.css";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ConnectionStatus } from "./connection-status";
+import { AdminAccess } from "./admin-access";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -35,7 +36,7 @@ export const subnavigation: Record<string, [
     kora: [["New Chat", "/kora"], ["Folders", "/kora/folders"], ["Investigations", "/kora/investigations"], ["Cases", "/kora/cases"], ["Actions", "/kora/actions"], ["Kora Brain", "/kora/brain"], ["Knowledge", "/kora/knowledge"], ["Sources", "/kora/sources"], ["History", "/kora/history"]],
     "live-view": [["Overview", "/live-view"], ["All Conversations", "/live-view/conversations"], ["Channels", "/live-view/channels"], ["Organizations", "/live-view/organizations"]],
     tasks: [["My Tasks", "/tasks"], ["Team Tasks", "/tasks/team"]],
-    settings: [["Overview", "/settings"], ["General", "/settings/general"], ["Company", "/settings/company"], ["Branding & Domains", "/settings/branding"], ["Roles & Access", "/settings/roles"], ["Security", "/settings/security"], ["Notifications", "/settings/notifications"], ["Integrations & API", "/settings/integrations"], ["Kora AI", "/settings/kora"], ["Data & Privacy", "/settings/data"], ["Audit & Compliance", "/settings/audit"], ["Advanced", "/settings/advanced"]],
+    settings: [["Overview", "/settings"], ["General", "/settings/general"], ["Company", "/settings/company"], ["Branding & Domains", "/settings/branding"], ["Roles & Access", "/settings/roles"], ["Security", "/settings/security"], ["Notifications", "/settings/notifications"], ["Integrations & API", "/settings/integrations"], ["Kora & AI Defaults", "/settings/kora"], ["Data & Privacy", "/settings/data"], ["Audit & Compliance", "/settings/audit"], ["Advanced", "/settings/advanced"]],
 };
 const subnavIcons: Record<string, LucideIcon> = {
     "/management": LayoutDashboard, "/management/organizations": Building2, "/management/customers": Users, "/management/users": UserRound,
@@ -71,7 +72,7 @@ export function NovyaShell({ children }: {
             };
         }>("/kora/chat", { message: prompt }), onSuccess: r => { setChat(false); setPrompt(""); router.push(`/kora/conversations/${r.data.conversation._id}`); } });
     const current = navigation.find(n => path === n.href || path.startsWith(n.href + "/"));
-    return <div className={`nv-shell ${root === "team" ? "tm-shell" : root === "calendar" ? "cl-shell" : root === "tasks" ? "tk-shell" : root === "inbox" ? "ib-shell" : root === "kora" ? "kr-shell" : root === "live-view" ? "lv-shell" : path === "/dashboard" ? "ov-shell" : ""}`}>
+    return <div className={`nv-shell ${root === "settings" ? "st-shell" : root === "team" ? "tm-shell" : root === "calendar" ? "cl-shell" : root === "tasks" ? "tk-shell" : root === "inbox" ? "ib-shell" : root === "kora" ? "kr-shell" : root === "live-view" ? "lv-shell" : path === "/dashboard" ? "ov-shell" : ""}`}>
     {mobile && <button className="nv-mobile-backdrop" aria-label="Close navigation" onClick={() => setMobile(false)}/>}
     <aside className={`nv-sidebar ${mobile ? "nv-sidebar-open" : ""}`}><Link className="nv-brand" href="/dashboard" onClick={() => setMobile(false)}><span className="nv-brand-mark">N</span>NOVYA</Link><button className="nv-mobile-close" aria-label="Close menu" onClick={() => setMobile(false)}><X size={20}/></button>
       {group && <Link href="/dashboard" className="nv-back-admin flex items-center gap-2" onClick={() => setMobile(false)}><ChevronLeft size={14} aria-hidden="true"/><span>Back to Admin</span></Link>}
@@ -82,7 +83,7 @@ export function NovyaShell({ children }: {
     </aside>
     <div className="nv-main"><header className="nv-topbar"><button className="nv-menu-button" aria-label="Open navigation" onClick={() => setMobile(true)}><Menu size={20}/></button><div className="nv-breadcrumb">{root === "kora" ? <span className="kr-topbar-title">{koraTitle}</span> : <>Admin <ChevronRight size={13}/></>}{root !== "kora" && <strong>{root === "team" ? teamTitle : root === "settings" ? "Settings" : current?.label ?? "Profile"}</strong>}</div>{root === "live-view" && <nav className="lv-top-tabs" aria-label="Live View sections">{subnavigation["live-view"].map(([label, href]) => <Link href={href} key={href} className={path === href || (href !== "/live-view" && path.startsWith(href + "/")) ? "selected" : ""}>{label === "All Conversations" ? "Conversations" : label === "Organizations" ? "All orgs" : label}</Link>)}</nav>}<form className={`nv-global-search ${root === "kora" && koraSearch ? "kr-search-open" : ""}`} onSubmit={e => { e.preventDefault(); if (search.trim())
         router.push(`/management/organizations?q=${encodeURIComponent(search.trim())}`); }}><Search size={14}/><input aria-label="Search organizations" placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)}/></form>{root === "kora" && <button className="kr-topbar-search" aria-label="Toggle organization search" aria-expanded={koraSearch} onClick={() => setKoraSearch(!koraSearch)}><Search size={16}/></button>}<span className="nv-scope" title={context.data?.data.role}>{context.data?.data.role??"Admin"}{ "\u00b7" } {context.data?.data.environment??"Context loading"}</span>{root !== "calendar" && <CreateLauncher ask={mode=>{setChatMode(mode);setChat(true);}}/>}<NotificationBell /><DropdownMenu modal={false}><DropdownMenuTrigger asChild><button type="button" className="nv-account-trigger" aria-label="Account menu"><span className="nv-avatar">{session?.user?.name?.slice(0, 1) ?? "A"}</span>{["kora", "live-view"].includes(root) && <><span>{session?.user?.name?.split(" ")[0] ?? "Admin"}</span><ChevronRight size={11}/></>}</button></DropdownMenuTrigger><DropdownMenuContent align="end" sideOffset={10} collisionPadding={12}><DropdownMenuLabel>{session?.user?.name ?? "Administrator"}</DropdownMenuLabel><DropdownMenuSeparator/><DropdownMenuItem asChild><Link href="/profile"><UserRound size={14}/>My profile</Link></DropdownMenuItem><DropdownMenuItem onSelect={() => signOut({ callbackUrl: "/login" })}><LogOut size={14}/>Sign out</DropdownMenuItem></DropdownMenuContent></DropdownMenu></header>
-      <div className="nv-body"><main className="nv-content"><ConnectionStatus/>{children}</main></div>
+        <div className="nv-body"><main className="nv-content"><ConnectionStatus/><AdminAccess personalAccount={root === "profile"}>{children}</AdminAccess></main></div>
     </div>
     <Dialog open={chat} onOpenChange={setChat}>
       <DialogContent overlayClassName="nv-kora-backdrop" className={`nv-dialog nv-kora-dialog ${chatMode === "chat" ? "nv-drawer" : ""}`}>

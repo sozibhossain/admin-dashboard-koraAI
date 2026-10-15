@@ -93,14 +93,9 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const session = await getSession();
-    const accessToken = session?.accessToken;
-    const message = error.response?.data?.message;
-    const tokenIsExpired = accessToken ? isExpiredJwt(accessToken) : false;
     const shouldSignOut =
       error.response?.status === 401 &&
-      !isPublicApiRequest(error.config?.url) &&
-      (tokenIsExpired || message === "User not found");
+      !isPublicApiRequest(error.config?.url);
 
     if (shouldSignOut) {
       await signOutOnce();
