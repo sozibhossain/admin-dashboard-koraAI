@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import { getSession, signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,10 @@ const loginErrorMessages: Record<string, string> = {
   role_not_allowed: "You are not an admin. Please use an admin account.",
   missing_credentials: "Email and password are required.",
   auth_service_unavailable: "Login service is unavailable. Please try again.",
+  invalid_credentials: "Invalid email or password.",
+  account_blocked: "This account is blocked. Contact your administrator.",
+  platform_access_required: "This account has no active platform administrator access. Contact your administrator.",
+  second_factor_required: "Enter a fresh six-digit code from your authenticator app.",
   session_required: "Please sign in to continue.",
   session_expired: "Your session expired. Please sign in again.",
 };
@@ -50,28 +54,26 @@ function getLoginErrorCode(result?: {
 }
 
 export default function LoginPage() {
+  return <Suspense fallback={<AuthCard title="Welcome back" description="Loading sign-in…"><Loader2 className="animate-spin" /></AuthCard>}><LoginForm /></Suspense>;
+}
+
+function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@gmail.com");
-  const [password, setPassword] = useState("123456");
+  const params = useSearchParams();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [needsSecondFactor, setNeedsSecondFactor] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState("");
+  const initialError = params.get("code") || params.get("error");
+  const [formError, setFormError] = useState(initialError ? loginErrorMessages[initialError] || "Unable to sign in. Please try again." : "");
 
   function showLoginError(code: string) {
     const message = loginErrorMessages[code] || "Invalid email or password.";
     setFormError(message);
     toast.error(message);
   }
-
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const code = searchParams.get("code") || searchParams.get("error");
-    if (!code) return;
-
-    const message = loginErrorMessages[code] || "Invalid email or password.";
-    setFormError(message);
-    toast.error(message);
-  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -82,11 +84,13 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
+        mfaCode,
         redirect: false,
         callbackUrl: "/dashboard",
       });
       const authErrorCode = getLoginErrorCode(result);
       if (!result?.ok || authErrorCode) {
+        if (authErrorCode === "second_factor_required") setNeedsSecondFactor(true);
         const message = getLoginErrorMessage(result);
         setFormError(message);
         toast.error(message);
@@ -107,7 +111,8 @@ export default function LoginPage() {
       }
 
       toast.success("Login successful!");
-      router.replace("/dashboard");
+      const callbackUrl = params.get("callbackUrl");
+      router.replace(callbackUrl?.startsWith("/") && !callbackUrl.startsWith("//") && !callbackUrl.startsWith("/login") ? callbackUrl : "/dashboard");
       router.refresh();
     } catch {
       const message = "Something went wrong. Please try again.";
@@ -169,6 +174,8 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+
+        {needsSecondFactor && <div className="auth-field"><Label htmlFor="mfaCode">Authenticator code</Label><Input id="mfaCode" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, ""))} placeholder="Six-digit code" /></div>}
 
         {formError ? (
           <div className="auth-error" role="alert">
